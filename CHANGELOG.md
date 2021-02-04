@@ -1,3 +1,8 @@
+## [1.1.5] - 2021-2-04
+
+-   Allow long text logs
+-   Removed linebreak before "Data" on net logs to facilitate filtering on debug console
+
 ## [1.1.4] - 2020-8-19
 
 -   Adjusting the net log display spacing

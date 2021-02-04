@@ -17,10 +17,6 @@ String _getTabName(int index) {
   return _tabNames[index].replaceAll(_tabReg, "");
 }
 
-int _getTabLevel(int index) {
-  return _tabLevel[index];
-}
-
 class _Config {
   /// Whether to display the log in reverse order
   bool reverse = false;
