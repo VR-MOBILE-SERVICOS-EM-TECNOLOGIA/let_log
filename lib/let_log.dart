@@ -1,6 +1,7 @@
 library let_log;
 
 import 'dart:convert';
+import 'dart:developer' as dev;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 part 'log_widget.dart';
@@ -9,10 +10,15 @@ part 'net_widget.dart';
 enum _Type { log, debug, warn, error }
 List<String> _printNames = ["😄", "🐛", "❗", "❌", "⬆️", "⬇️"];
 List<String> _tabNames = ["[Log]", "[Debug]", "[Warn]", "[Error]"];
+List<int> _tabLevel = [500, 0, 1000, 1500];
 final RegExp _tabReg = RegExp(r"\[|\]");
 
 String _getTabName(int index) {
   return _tabNames[index].replaceAll(_tabReg, "");
+}
+
+int _getTabLevel(int index) {
+  return _tabLevel[index];
 }
 
 class _Config {
@@ -164,6 +170,10 @@ class _Log {
     return _tabNames[type.index];
   }
 
+  int get tabLevel {
+    return _tabLevel[type.index];
+  }
+
   bool contains(String keyword) {
     if (keyword.isEmpty) return true;
     return message != null && message.contains(keyword) ||
@@ -196,8 +206,8 @@ class _Log {
     _clearWhenTooMuch();
     length.value++;
     if (Logger.config.printLog) {
-      debugPrint(
-          "${log.typeName} ${log.message}${log.detail == null ? '' : '\n${log.detail}'}\n--------------------------------");
+      dev.log(
+          "${log.typeName} ${log.message}${log.detail == null ? '' : ' ${log.detail}'}\n--------------------------------", level: log.tabLevel, time: DateTime.now());
     }
   }
 
@@ -318,8 +328,8 @@ class _Net extends ChangeNotifier {
     _clearWhenTooMuch();
     length.value++;
     if (Logger.config.printNet) {
-      debugPrint(
-          "${_printNames[4]} ${type == null ? '' : '$type: '}${net.api}${net.req == null ? '' : '\nData: ${net.req}'}\n--------------------------------");
+      dev.log(
+          "${_printNames[4]} ${type == null ? '' : '$type: '}${net.api}${net.req == null ? '' : ' Data: ${net.req}'}\n--------------------------------", time: DateTime.now());
     }
   }
 
@@ -349,8 +359,8 @@ class _Net extends ChangeNotifier {
       length.value++;
     }
     if (Logger.config.printNet) {
-      debugPrint(
-          "${_printNames[5]} ${net.type == null ? '' : '${net.type}: '}${net.api}${net.res == null ? '' : '\nData: ${net.res}'}\nSpend: ${net.spend} ms\n--------------------------------");
+      dev.log(
+          "${_printNames[5]} ${net.type == null ? '' : '${net.type}: '}${net.api}${net.res == null ? '' : ' Data: ${net.res}'}\nSpend: ${net.spend} ms\n--------------------------------", time: DateTime.now());
     }
   }
 
