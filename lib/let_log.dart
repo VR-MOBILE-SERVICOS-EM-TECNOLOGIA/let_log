@@ -199,7 +199,7 @@ class _Log {
     length.value++;
     if (Logger.config.printLog) {
       dev.log(
-          "${log.typeName} ${log.message}${log.detail == null ? '' : ' ${log.detail}'}\n--------------------------------", level: log.tabLevel, time: DateTime.now());
+          "${log.typeName} ${log.message}${log.detail == 'null' ? '' : ' ${log.detail}'}\n--------------------------------", level: log.tabLevel, time: DateTime.now());
     }
   }
 
