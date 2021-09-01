@@ -2,6 +2,7 @@ library let_log;
 
 import 'dart:convert';
 import 'dart:developer' as dev;
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 part 'log_widget.dart';
@@ -198,7 +199,10 @@ class _Log {
     _clearWhenTooMuch();
     length.value++;
     if (Logger.config.printLog) {
-      dev.log(
+      if (kIsWeb)
+        debugPrint('${log.typeName} ${DateTime.now()} ${log.message}${log.detail == 'null' ? '' : ' ${log.detail}'}\n--------------------------------');
+      else
+        dev.log(
           "${log.typeName} ${log.message}${log.detail == 'null' ? '' : ' ${log.detail}'}\n--------------------------------", level: log.tabLevel, time: DateTime.now());
     }
   }
@@ -319,8 +323,12 @@ class _Net extends ChangeNotifier {
     }
     _clearWhenTooMuch();
     length.value++;
+
     if (Logger.config.printNet) {
-      dev.log(
+      if (kIsWeb)
+        debugPrint('${_printNames[4]} ${DateTime.now()} ${'$type: '}\x1B[103m\x1B[30m${net.api}\x1B[0m${net.req == null ? '' : ' Data: ${net.req}'}\n--------------------------------');
+      else
+        dev.log(
           "${_printNames[4]} ${'$type: '}\x1B[103m\x1B[30m${net.api}\x1B[0m${net.req == null ? '' : ' Data: ${net.req}'}\n--------------------------------", time: DateTime.now());
     }
   }
@@ -351,7 +359,10 @@ class _Net extends ChangeNotifier {
       length.value++;
     }
     if (Logger.config.printNet) {
-      dev.log(
+      if (kIsWeb)
+        debugPrint("${_printNames[5]} ${DateTime.now()} ${net.type == null ? '' : '${net.type}: '}\x1B[106m\x1B[30m${net.api}\x1B[0m${net.res == null ? '' : ' Data: ${net.res}'}\nSpend: ${net.spend} ms\n--------------------------------");
+      else
+        dev.log(
           "${_printNames[5]} ${net.type == null ? '' : '${net.type}: '}\x1B[106m\x1B[30m${net.api}\x1B[0m${net.res == null ? '' : ' Data: ${net.res}'}\nSpend: ${net.spend} ms\n--------------------------------", time: DateTime.now());
     }
   }
