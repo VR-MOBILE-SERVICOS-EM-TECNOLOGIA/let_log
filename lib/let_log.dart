@@ -97,23 +97,47 @@ class Logger extends StatelessWidget {
   static _Config config = _Config();
 
   /// Logging
-  static void log(Object message, [Object? detail]) {
-    if (enabled) _Log.add(_Type.log, message, detail);
+  static void log(Object time, Object message,
+      {Object? detail,
+      String timeColor = '\x1B[37m',
+      String msgColor = '\x1B[34m'}) {
+    if (enabled) {
+      _Log.length.value++;
+      _Log.add(_Type.log, time, message, detail, timeColor, msgColor);
+    }
   }
 
   /// Record debug information
-  static void debug(Object message, [Object? detail]) {
-    if (enabled) _Log.add(_Type.debug, message, detail);
+  static void debug(Object time, Object message,
+      {Object? detail,
+      String timeColor = '\x1B[37m',
+      String msgColor = '\x1B[34m'}) {
+    if (enabled) {
+      _Log.length.value++;
+      _Log.add(_Type.debug, time, message, detail, timeColor, msgColor);
+    }
   }
 
   /// Record warnning information
-  static void warn(Object message, [Object? detail]) {
-    if (enabled) _Log.add(_Type.warn, message, detail);
+  static void warn(Object time, Object message,
+      {Object? detail,
+      String timeColor = '\x1B[37m',
+      String msgColor = '\x1B[34m'}) {
+    if (enabled) {
+      _Log.length.value++;
+      _Log.add(_Type.warn, time, message, detail, timeColor, msgColor);
+    }
   }
 
   /// Record error information
-  static void error(Object message, [Object? detail]) {
-    if (enabled) _Log.add(_Type.error, message, detail);
+  static void error(Object time, Object message,
+      {Object? detail,
+      String timeColor = '\x1B[37m',
+      String msgColor = '\x1B[34m'}) {
+    if (enabled) {
+      _Log.length.value++;
+      _Log.add(_Type.error, time, message, detail, timeColor, msgColor);
+    }
   }
 
   /// Start recording time
@@ -134,13 +158,13 @@ class Logger extends StatelessWidget {
   /// Recording network information
   static void net(String api,
       {String type = "Http", int status = 100, Object? data}) {
-    if (enabled) _Net.request(api, type, status, data);
+    if (enabled) _Net.request(api, type, status, data, '\x1B[32m');
   }
 
   /// End of record network information, with statistics on duration and size.
   static void endNet(String api,
       {int status = 200, Object? data, Object? headers, String? type}) {
-    if (enabled) _Net.response(api, status, data, headers, type);
+    if (enabled) _Net.response(api, status, data, headers, type, '\x1B[32m');
   }
 }
 
@@ -188,7 +212,8 @@ class _Log {
     return sb.toString();
   }
 
-  static void add(_Type type, Object value, Object? detail) {
+  static void add(_Type type, Object time, Object value, Object? detail,
+      String timeColor, String msgColor) {
     final log = _Log(
       type: type,
       message: value.toString(),
@@ -197,13 +222,16 @@ class _Log {
     );
     list.add(log);
     _clearWhenTooMuch();
-    length.value++;
     if (Logger.config.printLog) {
       if (kIsWeb)
-        debugPrint('${log.typeName} ${DateTime.now()} ${log.message}${log.detail == 'null' ? '' : ' ${log.detail}'}\n--------------------------------');
-      else
+        debugPrint(
+            '${log.typeName} $time${log.message}${log.detail == 'null' ? '' : ' ${log.detail}'}\n--------------------------------');
+      else {
         dev.log(
-          "${log.typeName} ${log.message}${log.detail == 'null' ? '' : ' ${log.detail}'}\n--------------------------------", level: log.tabLevel, time: DateTime.now());
+            '${log.typeName} $timeColor$time$msgColor${log.message}\x1B[0m${log.detail == 'null' ? '' : ' ${log.detail}'}\n--------------------------------',
+            level: log.tabLevel,
+            time: DateTime.now());
+      }
     }
   }
 
@@ -222,7 +250,8 @@ class _Log {
     if (data != null) {
       _map.remove(key);
       final spend = DateTime.now().difference(data as DateTime).inMilliseconds;
-      _Log.add(_Type.log, '$key: $spend ms', null);
+      _Log.add(_Type.log, 'DateTime.now()', '$key: $spend ms', null, '\x1B[37m',
+          '\x1B[34m');
     }
   }
 
@@ -299,15 +328,19 @@ class _Net extends ChangeNotifier {
   String toString() {
     final StringBuffer sb = StringBuffer();
     sb.writeln("[$status] $api");
+    sb.writeln();
     sb.writeln("Start: $start");
     sb.writeln("Spend: $spend ms");
     sb.writeln("Headers: $headers");
+    sb.writeln();
     sb.writeln("Request: $req");
+    sb.writeln();
     sb.writeln("Response: $res");
     return sb.toString();
   }
 
-  static void request(String api, String type, int status, Object? data) {
+  static void request(
+      String api, String type, int status, Object? data, String msgColor) {
     final net = _Net(
       api: api,
       type: type,
@@ -326,10 +359,12 @@ class _Net extends ChangeNotifier {
 
     if (Logger.config.printNet) {
       if (kIsWeb)
-        debugPrint('${_printNames[4]} ${DateTime.now()} ${'$type: '}\x1B[103m\x1B[30m${net.api}\x1B[0m${net.req == null ? '' : ' Data: ${net.req}'}\n--------------------------------');
+        debugPrint(
+            '${_printNames[4]} ${DateTime.now()} ${'$type: '}${net.api}${net.req == null ? '' : ' Data: ${net.req}'}\n--------------------------------');
       else
         dev.log(
-          "${_printNames[4]} ${'$type: '}\x1B[103m\x1B[30m${net.api}\x1B[0m${net.req == null ? '' : ' Data: ${net.req}'}\n--------------------------------", time: DateTime.now());
+            '${_printNames[4]} ${'$type: '}\x1B[103m\x1B[30m${net.api}\x1B[0m${net.req == null ? '' : ' Data: $msgColor${net.req}\x1B[0m'}\n--------------------------------',
+            time: DateTime.now());
     }
   }
 
@@ -339,8 +374,8 @@ class _Net extends ChangeNotifier {
     }
   }
 
-  static void response(
-      String api, int status, Object? data, Object? headers, String? type) {
+  static void response(String api, int status, Object? data, Object? headers,
+      String? type, String msgColor) {
     _Net? net = _map[api];
     if (net != null) {
       _map.remove(net);
@@ -360,10 +395,12 @@ class _Net extends ChangeNotifier {
     }
     if (Logger.config.printNet) {
       if (kIsWeb)
-        debugPrint("${_printNames[5]} ${DateTime.now()} ${net.type == null ? '' : '${net.type}: '}\x1B[106m\x1B[30m${net.api}\x1B[0m${net.res == null ? '' : ' Data: ${net.res}'}\nSpend: ${net.spend} ms\n--------------------------------");
+        debugPrint(
+            '${_printNames[5]} ${DateTime.now()} ${net.type == null ? '' : '${net.type}: '}{net.api}${net.res == null ? '' : ' Data: ${net.res}'}\nSpend: ${net.spend} ms\n--------------------------------');
       else
         dev.log(
-          "${_printNames[5]} ${net.type == null ? '' : '${net.type}: '}\x1B[106m\x1B[30m${net.api}\x1B[0m${net.res == null ? '' : ' Data: ${net.res}'}\nSpend: ${net.spend} ms\n--------------------------------", time: DateTime.now());
+            '${_printNames[5]} ${net.type == null ? '' : '${net.type}: '}\x1B[106m\x1B[30m${net.api}\x1B[0m${net.res == null ? '' : ' Data: $msgColor${net.res}\x1B[0m'}\nSpend: ${net.spend} ms\n--------------------------------',
+            time: DateTime.now());
     }
   }
 

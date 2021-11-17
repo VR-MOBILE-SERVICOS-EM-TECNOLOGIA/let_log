@@ -60,16 +60,19 @@ class _MyHomePageState extends State<MyHomePage> {
 
   void _test(_) {
     // log
-    Logger.log("this is log");
+    Logger.log('(${DateTime.now()})', "this is log");
 
     // debug
-    Logger.debug("this is debug", "this is debug message");
+    Logger.debug('(${DateTime.now()})', "this is debug",
+        detail: "this is debug message");
 
     // warn
-    Logger.warn("this is warn", "this is a warning message");
+    Logger.warn('(${DateTime.now()})', "this is warn",
+        detail: "this is a warning message");
 
     // error
-    Logger.error("this is error", "this is a error message");
+    Logger.error('(${DateTime.now()})', "this is error",
+        detail: "this is a error message");
 
     // test error
     try {

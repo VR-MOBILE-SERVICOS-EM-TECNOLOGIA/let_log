@@ -129,7 +129,7 @@ class _LogWidgetState extends State<LogWidget> {
               "${item.tabName} ${item.message} (${item.start!.hour}:${item.start!.minute}:${item.start!.second}:${item.start!.millisecond})",
               style: TextStyle(fontSize: 16, color: color),
             ),
-            if (item.detail != null)
+            if (item.detail != null && item.detail != 'null')
               Padding(
                 padding: const EdgeInsets.only(top: 8),
                 child: Text(

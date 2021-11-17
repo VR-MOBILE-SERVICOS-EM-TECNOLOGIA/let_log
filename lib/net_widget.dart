@@ -161,16 +161,15 @@ class _NetWidgetState extends State<NetWidget> {
                     padding: const EdgeInsets.only(top: 8, bottom: 8),
                     child: Row(
                       children: [
-                        SizedBox(
-                          width: 120,
+                        Expanded(
+                          flex: 2,
                           child: Text(
                             "${item.start!.hour}:${item.start!.minute}:${item.start!.second}:${item.start!.millisecond}",
                             style: const TextStyle(fontSize: 14),
                             maxLines: 1,
                           ),
                         ),
-                        SizedBox(
-                          width: 100,
+                        Expanded(
                           child: Text(
                             "${item.spend} ms",
                             style: const TextStyle(fontSize: 14),
@@ -178,11 +177,14 @@ class _NetWidgetState extends State<NetWidget> {
                             maxLines: 1,
                           ),
                         ),
-                        Text(
-                          "${item.getReqSize()}/${item.getResSize()}B",
-                          style: const TextStyle(fontSize: 14),
-                          overflow: TextOverflow.visible,
-                          maxLines: 1,
+                        Expanded(
+                          flex: 2,
+                          child: Text(
+                            "${item.getReqSize()}/${item.getResSize()}B",
+                            style: const TextStyle(fontSize: 14),
+                            overflow: TextOverflow.ellipsis,
+                            maxLines: 1,
+                          ),
                         ),
                       ],
                     ),
