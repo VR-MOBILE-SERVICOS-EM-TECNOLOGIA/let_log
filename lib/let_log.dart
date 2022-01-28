@@ -5,8 +5,11 @@ import 'dart:developer' as dev;
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:pluto_grid/pluto_grid.dart';
+import 'package:sqflite/sqlite_api.dart';
 part 'log_widget.dart';
 part 'net_widget.dart';
+part 'db_widget.dart';
 
 enum _Type { log, debug, warn, error }
 List<String> _printNames = ["😄", "🐛", "❗", "❌", "⬆️", "⬇️"];
@@ -69,25 +72,44 @@ class _Config {
 }
 
 class Logger extends StatelessWidget {
+  final Future<Database?>? dbFuture;
+
+  const Logger({
+    this.dbFuture,
+  });
+
   @override
   Widget build(BuildContext context) {
+    final List<Tab> tabsList = [
+      const Tab(child: Text("Log")),
+      const Tab(child: Text("Net"))
+    ];
+    final List<Widget> tabsViewsList = [
+      const LogWidget(),
+      const NetWidget(),
+    ];
+
+    if (dbFuture != null) {
+      tabsList.add(
+        const Tab(child: Text("Banco de dados", textAlign: TextAlign.center))
+      );
+
+      tabsViewsList.add(
+        DBWidget(dbFuture: dbFuture)
+      );
+    }
+
     return DefaultTabController(
-      length: 2,
+      length: tabsList.length,
       child: Scaffold(
         appBar: AppBar(
-          title: const TabBar(
-            tabs: [
-              Tab(child: Text("Log")),
-              Tab(child: Text("Net")),
-            ],
+          title: TabBar(
+            tabs: tabsList,
           ),
           elevation: 0,
         ),
-        body: const TabBarView(
-          children: [
-            LogWidget(),
-            NetWidget(),
-          ],
+        body: TabBarView(
+          children: tabsViewsList,
         ),
       ),
     );
@@ -165,6 +187,11 @@ class Logger extends StatelessWidget {
   static void endNet(String api,
       {int status = 200, Object? data, Object? headers, String? type}) {
     if (enabled) _Net.response(api, status, data, headers, type, '\x1B[32m');
+  }
+  @override
+  void debugFillProperties(DiagnosticPropertiesBuilder properties) {
+    super.debugFillProperties(properties);
+    properties.add(DiagnosticsProperty<Future<Database?>>('dbFuture', dbFuture));
   }
 }
 
@@ -363,7 +390,7 @@ class _Net extends ChangeNotifier {
             '${_printNames[4]} ${DateTime.now()} ${'$type: '}${net.api}${net.req == null ? '' : ' Data: ${net.req}'}\n--------------------------------');
       else
         dev.log(
-            '${_printNames[4]} ${'$type: '}\x1B[103m\x1B[30m${net.api}\x1B[0m${net.req == null ? '' : ' Data: $msgColor${net.req}\x1B[0m'}\n--------------------------------',
+            '${_printNames[4]} (${DateTime.now()}) ${'$type: '}\x1B[103m\x1B[30m${net.api}\x1B[0m${net.req == null ? '' : ' Data: $msgColor${net.req}\x1B[0m'}\n--------------------------------',
             time: DateTime.now());
     }
   }
@@ -399,7 +426,7 @@ class _Net extends ChangeNotifier {
             '${_printNames[5]} ${DateTime.now()} ${net.type == null ? '' : '${net.type}: '}{net.api}${net.res == null ? '' : ' Data: ${net.res}'}\nSpend: ${net.spend} ms\n--------------------------------');
       else
         dev.log(
-            '${_printNames[5]} ${net.type == null ? '' : '${net.type}: '}\x1B[106m\x1B[30m${net.api}\x1B[0m${net.res == null ? '' : ' Data: $msgColor${net.res}\x1B[0m'}\nSpend: ${net.spend} ms\n--------------------------------',
+            '${_printNames[5]} (${DateTime.now()}) ${net.type == null ? '' : '${net.type}: '}\x1B[106m\x1B[30m${net.api}\x1B[0m${net.res == null ? '' : ' Data: $msgColor${net.res}\x1B[0m'}\nSpend: ${net.spend} ms\n--------------------------------',
             time: DateTime.now());
     }
   }

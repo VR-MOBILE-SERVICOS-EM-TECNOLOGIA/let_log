@@ -80,6 +80,27 @@ Widget build(BuildContext context) {
 }
 ```
 
+**Display logs in the app with DB view (sqflite)**
+
+```dart
+late Future<Database> _dataBase;
+
+@override
+void initState() {
+  _dataBase = openDatabase(
+    path,
+    version: databaseVersion,
+    onCreate: _onCreate,
+    onUpgrade: _onUpgrade
+  );
+  super.initState();
+}
+
+Widget build(BuildContext context) {
+  return Logger(dbFuture: _dataBase);
+}
+```
+
 > For a detailed example, please refer to [here](example/lib/main.dart).
 
 **App log**
