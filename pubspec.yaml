@@ -1,16 +1,16 @@
 name: let_log
 description: LetLog is a logger that supports both IDE and in-app display, and supports log and network.
-version: 2.1.0
+version: 2.1.0+1
 homepage: https://github.com/yungzhu/let_log
 
 environment:
-    sdk: '>=2.15.0 <3.0.0'
+    sdk: '>=2.16.1 <3.0.0'
 
 dependencies:
     flutter:
         sdk: flutter
     pluto_grid: ^2.9.2
-    sqflite: ^2.0.1
+    sqflite: ^2.0.2
 
 # For information on the generic Dart part of this file, see the
 # following page: https://dart.dev/tools/pub/pubspec
