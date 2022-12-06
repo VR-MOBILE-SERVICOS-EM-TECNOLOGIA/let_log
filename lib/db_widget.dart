@@ -39,7 +39,6 @@ class _DBWidgetState extends State<DBWidget> {
 
   @override
   void dispose() {
-    _textController!.dispose();
     _scrollController!.dispose();
     super.dispose();
   }
