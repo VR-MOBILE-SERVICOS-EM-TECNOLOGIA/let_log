@@ -18,7 +18,6 @@ class DBWidget extends StatefulWidget {
 }
 
 class _DBWidgetState extends State<DBWidget> {
-  TextEditingController? _textController;
   ScrollController? _scrollController;
   bool _goDown = true;
   Future<List<Map<String, dynamic>>?>? _tablesList;
@@ -39,7 +38,6 @@ class _DBWidgetState extends State<DBWidget> {
 
   @override
   void dispose() {
-    _textController!.dispose();
     _scrollController!.dispose();
     super.dispose();
   }
