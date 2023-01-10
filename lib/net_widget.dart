@@ -37,23 +37,23 @@ class _NetWidgetState extends State<NetWidget> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: <Widget>[
           ValueListenableBuilder<int>(
-            valueListenable: _Net.typeLength,
+            valueListenable: LoggerNet.typeLength,
             builder: (context, value, child) {
               return _buildTools();
             },
           ),
           Expanded(
             child: ValueListenableBuilder<int>(
-              valueListenable: _Net.length,
+              valueListenable: LoggerNet.length,
               builder: (context, value, child) {
-                List<_Net> logs = _Net.list;
-                if (!_selectTypes.contains(_Net.all)) {
-                  logs = _Net.list.where((test) {
+                List<LoggerNet> logs = LoggerNet.list;
+                if (!_selectTypes.contains(LoggerNet.all)) {
+                  logs = LoggerNet.list.where((test) {
                     return _selectTypes.contains(test.type) &&
                         test.contains(_keyword);
                   }).toList();
                 } else if (_keyword.isNotEmpty) {
-                  logs = _Net.list.where((test) {
+                  logs = LoggerNet.list.where((test) {
                     return test.contains(_keyword);
                   }).toList();
                 }
@@ -108,7 +108,7 @@ class _NetWidgetState extends State<NetWidget> {
     );
   }
 
-  Widget _buildItem(_Net item, context) {
+  Widget _buildItem(LoggerNet item, context) {
     final color = _getColor(item.status);
     return InkWell(
       onTap: () {
@@ -243,11 +243,11 @@ class _NetWidgetState extends State<NetWidget> {
     }
   }
 
-  final List<String> _selectTypes = [_Net.all];
+  final List<String> _selectTypes = [LoggerNet.all];
 
   Widget _buildTools() {
     final List<ChoiceChip> arr = [];
-    _Net.types.forEach((f) {
+    LoggerNet.types.forEach((f) {
       arr.add(
         ChoiceChip(
           label: Text(f, style: const TextStyle(fontSize: 14)),
@@ -278,7 +278,7 @@ class _NetWidgetState extends State<NetWidget> {
             ),
             const IconButton(
               icon: Icon(Icons.clear),
-              onPressed: _Net.clear,
+              onPressed: LoggerNet.clear,
             ),
             IconButton(
               icon: _keyword.isEmpty
