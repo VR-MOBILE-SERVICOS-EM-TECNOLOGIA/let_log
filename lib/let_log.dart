@@ -124,8 +124,8 @@ class Logger extends StatelessWidget {
       String timeColor = '\x1B[37m',
       String msgColor = '\x1B[34m'}) {
     if (enabled) {
-      _Log.length.value++;
-      _Log.add(_Type.log, time, message, detail, timeColor, msgColor);
+      LoggerLog.length.value++;
+      LoggerLog.add(_Type.log, time, message, detail, timeColor, msgColor);
     }
   }
 
@@ -135,8 +135,8 @@ class Logger extends StatelessWidget {
       String timeColor = '\x1B[37m',
       String msgColor = '\x1B[34m'}) {
     if (enabled) {
-      _Log.length.value++;
-      _Log.add(_Type.debug, time, message, detail, timeColor, msgColor);
+      LoggerLog.length.value++;
+      LoggerLog.add(_Type.debug, time, message, detail, timeColor, msgColor);
     }
   }
 
@@ -146,8 +146,8 @@ class Logger extends StatelessWidget {
       String timeColor = '\x1B[37m',
       String msgColor = '\x1B[34m'}) {
     if (enabled) {
-      _Log.length.value++;
-      _Log.add(_Type.warn, time, message, detail, timeColor, msgColor);
+      LoggerLog.length.value++;
+      LoggerLog.add(_Type.warn, time, message, detail, timeColor, msgColor);
     }
   }
 
@@ -157,36 +157,36 @@ class Logger extends StatelessWidget {
       String timeColor = '\x1B[37m',
       String msgColor = '\x1B[34m'}) {
     if (enabled) {
-      _Log.length.value++;
-      _Log.add(_Type.error, time, message, detail, timeColor, msgColor);
+      LoggerLog.length.value++;
+      LoggerLog.add(_Type.error, time, message, detail, timeColor, msgColor);
     }
   }
 
   /// Start recording time
   static void time(Object key) {
-    if (enabled) _Log.time(key);
+    if (enabled) LoggerLog.time(key);
   }
 
   /// End of record time
   static void endTime(Object key) {
-    if (enabled) _Log.endTime(key);
+    if (enabled) LoggerLog.endTime(key);
   }
 
   /// Clearance log
   static void clear() {
-    _Log.clear();
+    LoggerLog.clear();
   }
 
   /// Recording network information
   static void net(String api,
       {String type = "Http", int status = 100, Object? data}) {
-    if (enabled) _Net.request(api, type, status, data, '\x1B[32m');
+    if (enabled) LoggerNet.request(api, type, status, data, '\x1B[32m');
   }
 
   /// End of record network information, with statistics on duration and size.
   static void endNet(String api,
       {int status = 200, Object? data, Object? headers, String? type}) {
-    if (enabled) _Net.response(api, status, data, headers, type, '\x1B[32m');
+    if (enabled) LoggerNet.response(api, status, data, headers, type, '\x1B[32m');
   }
   @override
   void debugFillProperties(DiagnosticPropertiesBuilder properties) {
@@ -195,8 +195,8 @@ class Logger extends StatelessWidget {
   }
 }
 
-class _Log {
-  static final List<_Log> list = [];
+class LoggerLog {
+  static final List<LoggerLog> list = [];
   static final ValueNotifier<int> length = ValueNotifier(0);
   static final Map<Object, Object> _map = {};
 
@@ -204,7 +204,8 @@ class _Log {
   final String? message;
   final String? detail;
   final DateTime? start;
-  const _Log({this.type, this.message, this.detail, this.start});
+  String? id;
+  LoggerLog({this.type, this.message, this.detail, this.start, this.id});
 
   String get typeName {
     return _printNames[type!.index];
@@ -241,7 +242,7 @@ class _Log {
 
   static void add(_Type type, Object time, Object value, Object? detail,
       String timeColor, String msgColor) {
-    final log = _Log(
+    final log = LoggerLog(
       type: type,
       message: value.toString(),
       detail: detail.toString(),
@@ -277,7 +278,7 @@ class _Log {
     if (data != null) {
       _map.remove(key);
       final spend = DateTime.now().difference(data as DateTime).inMilliseconds;
-      _Log.add(_Type.log, 'DateTime.now()', '$key: $spend ms', null, '\x1B[37m',
+      LoggerLog.add(_Type.log, 'DateTime.now()', '$key: $spend ms', null, '\x1B[37m',
           '\x1B[34m');
     }
   }
@@ -289,17 +290,18 @@ class _Log {
   }
 }
 
-class _Net extends ChangeNotifier {
+class LoggerNet extends ChangeNotifier {
   static const all = "All";
-  static final List<_Net> list = [];
+  static final List<LoggerNet> list = [];
   static final ValueNotifier<int> length = ValueNotifier(0);
-  static final Map<String, _Net> _map = {};
+  static final Map<String, LoggerNet> _map = {};
   static final List<String> types = [all];
   static final ValueNotifier<int> typeLength = ValueNotifier(1);
 
   final String? api;
   final String? req;
   final DateTime? start;
+  String? id;
   String? type;
   int status = 100;
   int spend = 0;
@@ -309,7 +311,7 @@ class _Net extends ChangeNotifier {
   int _reqSize = -1;
   int _resSize = -1;
 
-  _Net({
+  LoggerNet({
     this.api,
     this.type,
     this.req,
@@ -318,6 +320,7 @@ class _Net extends ChangeNotifier {
     this.res,
     this.spend = 0,
     this.status = 100,
+    this.id,
   });
 
   int getReqSize() {
@@ -368,7 +371,7 @@ class _Net extends ChangeNotifier {
 
   static void request(
       String api, String type, int status, Object? data, String msgColor) {
-    final net = _Net(
+    final net = LoggerNet(
       api: api,
       type: type,
       status: status,
@@ -403,7 +406,7 @@ class _Net extends ChangeNotifier {
 
   static void response(String api, int status, Object? data, Object? headers,
       String? type, String msgColor) {
-    _Net? net = _map[api];
+    LoggerNet? net = _map[api];
     if (net != null) {
       _map.remove(net);
       net.spend = DateTime.now().difference(net.start!).inMilliseconds;
@@ -412,7 +415,7 @@ class _Net extends ChangeNotifier {
       net.res = data?.toString();
       length.notifyListeners();
     } else {
-      net = _Net(api: api, start: DateTime.now(), type: type);
+      net = LoggerNet(api: api, start: DateTime.now(), type: type);
       net.status = status;
       net.headers = headers?.toString();
       net.res = data?.toString();
