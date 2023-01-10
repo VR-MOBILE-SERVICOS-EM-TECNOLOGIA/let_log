@@ -39,11 +39,11 @@ class _LogWidgetState extends State<LogWidget> {
           _buildTools(),
           Expanded(
             child: ValueListenableBuilder<int>(
-              valueListenable: _Log.length,
+              valueListenable: LoggerLog.length,
               builder: (context, value, child) {
-                List<_Log> logs = _Log.list;
+                List<LoggerLog> logs = LoggerLog.list;
                 if (_selectTypes.length < 4 || _keyword.isNotEmpty) {
-                  logs = _Log.list.where((test) {
+                  logs = LoggerLog.list.where((test) {
                     return _selectTypes.contains(test.type) &&
                         test.contains(_keyword);
                   }).toList();
@@ -99,7 +99,7 @@ class _LogWidgetState extends State<LogWidget> {
     );
   }
 
-  Widget _buildItem(_Log item, Color? color) {
+  Widget _buildItem(LoggerLog item, Color? color) {
     return InkWell(
       onTap: () {
         final ClipboardData data = ClipboardData(text: item.toString());
@@ -201,7 +201,7 @@ class _LogWidgetState extends State<LogWidget> {
             ),
             const IconButton(
               icon: Icon(Icons.clear),
-              onPressed: _Log.clear,
+              onPressed: LoggerLog.clear,
             ),
             IconButton(
               icon: _keyword.isEmpty
