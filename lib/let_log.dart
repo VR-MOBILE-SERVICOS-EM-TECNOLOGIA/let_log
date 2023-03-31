@@ -71,49 +71,18 @@ class _Config {
   }
 }
 
-class Logger extends StatelessWidget {
+class Logger extends StatefulWidget {
   final Future<Database?>? dbFuture;
+  final Function()? onSelectFirstTab;
+  final Function()? onSelectSecondTab;
+  final Function()? onSelectThirdTab;
 
   const Logger({
     this.dbFuture,
+    this.onSelectFirstTab,
+    this.onSelectSecondTab,
+    this.onSelectThirdTab,
   });
-
-  @override
-  Widget build(BuildContext context) {
-    final List<Tab> tabsList = [
-      const Tab(child: Text("Log")),
-      const Tab(child: Text("Net"))
-    ];
-    final List<Widget> tabsViewsList = [
-      const LogWidget(),
-      const NetWidget(),
-    ];
-
-    if (dbFuture != null) {
-      tabsList.add(
-        const Tab(child: Text("Banco de dados", textAlign: TextAlign.center))
-      );
-
-      tabsViewsList.add(
-        DBWidget(dbFuture: dbFuture)
-      );
-    }
-
-    return DefaultTabController(
-      length: tabsList.length,
-      child: Scaffold(
-        appBar: AppBar(
-          title: TabBar(
-            tabs: tabsList,
-          ),
-          elevation: 0,
-        ),
-        body: TabBarView(
-          children: tabsViewsList,
-        ),
-      ),
-    );
-  }
 
   static bool enabled = true;
   static _Config config = _Config();
@@ -172,11 +141,6 @@ class Logger extends StatelessWidget {
     if (enabled) LoggerLog.endTime(key);
   }
 
-  /// Clearance log
-  static void clear() {
-    LoggerLog.clear();
-  }
-
   /// Recording network information
   static void net(String api,
       {String type = "Http", int status = 100, Object? data}) {
@@ -188,10 +152,94 @@ class Logger extends StatelessWidget {
       {int status = 200, Object? data, Object? headers, String? type}) {
     if (enabled) LoggerNet.response(api, status, data, headers, type, '\x1B[32m');
   }
+
+  /// Clearance log
+  static void clear() {
+    LoggerLog.clear();
+  }
+
+  @override
+  LoggerState createState() => LoggerState();
+  
   @override
   void debugFillProperties(DiagnosticPropertiesBuilder properties) {
     super.debugFillProperties(properties);
-    properties.add(DiagnosticsProperty<Future<Database?>>('dbFuture', dbFuture));
+    properties.add(DiagnosticsProperty<Future<Database?>?>('dbFuture', dbFuture));
+    properties.add(ObjectFlagProperty<Function()?>.has('onSelectLogTabs', onSelectFirstTab));
+    properties.add(ObjectFlagProperty<Function()?>.has('onSelectNetTabs', onSelectSecondTab));
+    properties.add(ObjectFlagProperty<Function()?>.has('onSelectDBTabs', onSelectThirdTab));
+  }
+}
+class LoggerState extends State<Logger> with TickerProviderStateMixin {
+  late TabController tabsController;
+  final List<Tab> tabsList = [
+    const Tab(child: Text("Log")),
+    const Tab(child: Text("Net"))
+  ];
+  final List<Widget> tabsViewsList = [
+    const LogWidget(),
+    const NetWidget(),
+  ];
+
+  @override
+  void initState() {
+    if (widget.dbFuture != null) {
+      tabsList.add(
+        const Tab(
+          child: Text("Banco de dados",
+          textAlign: TextAlign.center)
+        )
+      );
+
+      tabsViewsList.add(
+        DBWidget(dbFuture: widget.dbFuture)
+      );
+    }
+    tabsController = TabController(length: tabsList.length, vsync: this);
+    tabsController.addListener(() {
+      if (!tabsController.indexIsChanging) {
+        switch (tabsController.index) {
+          case 0:
+            if (widget.onSelectFirstTab != null) {
+              widget.onSelectFirstTab!();
+            }
+          break;
+          case 1:
+            if (widget.onSelectSecondTab != null) {
+              widget.onSelectSecondTab!();
+            }
+          break;
+          default:
+            if (widget.onSelectThirdTab != null) {
+              widget.onSelectThirdTab!();
+            }
+        }
+      }
+    });
+    super.initState();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(
+        title: TabBar(
+          controller: tabsController,
+          tabs: tabsList,
+        ),
+        elevation: 0,
+      ),
+      body: TabBarView(
+        controller: tabsController,
+        children: tabsViewsList,
+      ),
+    );
+  }
+
+  @override
+  void debugFillProperties(DiagnosticPropertiesBuilder properties) {
+    super.debugFillProperties(properties);
+    properties.add(DiagnosticsProperty<TabController>('tabsController', tabsController));
   }
 }
 
