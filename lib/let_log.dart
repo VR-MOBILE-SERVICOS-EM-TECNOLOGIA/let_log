@@ -143,8 +143,8 @@ class Logger extends StatefulWidget {
 
   /// Recording network information
   static void net(String api,
-      {String type = "Http", int status = 100, Object? data}) {
-    if (enabled) LoggerNet.request(api, type, status, data, '\x1B[32m');
+      {String type = "Http", int status = 100, Object? data, Object? headers}) {
+    if (enabled) LoggerNet.request(api, type, status, data, headers, '\x1B[32m');
   }
 
   /// End of record network information, with statistics on duration and size.
@@ -418,11 +418,12 @@ class LoggerNet extends ChangeNotifier {
   }
 
   static void request(
-      String api, String type, int status, Object? data, String msgColor) {
+      String api, String type, int status, Object? data, Object? headers, String msgColor) {
     final net = LoggerNet(
       api: api,
       type: type,
       status: status,
+      headers: headers?.toString(),
       req: data?.toString(),
       start: DateTime.now(),
     );
@@ -438,10 +439,10 @@ class LoggerNet extends ChangeNotifier {
     if (Logger.config.printNet) {
       if (kIsWeb)
         debugPrint(
-            '${_printNames[4]} ${DateTime.now()} ${'$type: '}${net.api}${net.req == null ? '' : ' Data: ${net.req}'}\n--------------------------------');
+            '${_printNames[4]} ${DateTime.now()} ${'$type: '}${net.api}${net.req == null ? '' : ' Headers: ${net.headers}\nData: ${net.req}'}\n--------------------------------');
       else
         dev.log(
-            '${_printNames[4]} (${DateTime.now()}) ${'$type: '}\x1B[103m\x1B[30m${net.api}\x1B[0m${net.req == null ? '' : ' Data: $msgColor${net.req}\x1B[0m'}\n--------------------------------',
+            '${_printNames[4]} (${DateTime.now()}) ${'$type: '}\x1B[103m\x1B[30m${net.api}\x1B[0m${net.req == null ? '' : ' Headers: ${net.headers}\nData: $msgColor${net.req}\x1B[0m'}\n--------------------------------',
             time: DateTime.now());
     }
   }
@@ -474,10 +475,10 @@ class LoggerNet extends ChangeNotifier {
     if (Logger.config.printNet) {
       if (kIsWeb)
         debugPrint(
-            '${_printNames[5]} ${DateTime.now()} ${net.type == null ? '' : '${net.type}: '}{net.api}${net.res == null ? '' : ' Data: ${net.res}'}\nSpend: ${net.spend} ms\n--------------------------------');
+            '${_printNames[5]} ${DateTime.now()} ${net.type == null ? '' : '${net.type}: '}{net.api}${net.res == null ? '' : ' Headers: ${net.headers}\nData: ${net.res}'}\nSpend: ${net.spend} ms\n--------------------------------');
       else
         dev.log(
-            '${_printNames[5]} (${DateTime.now()}) ${net.type == null ? '' : '${net.type}: '}\x1B[106m\x1B[30m${net.api}\x1B[0m${net.res == null ? '' : ' Data: $msgColor${net.res}\x1B[0m'}\nSpend: ${net.spend} ms\n--------------------------------',
+            '${_printNames[5]} (${DateTime.now()}) ${net.type == null ? '' : '${net.type}: '}\x1B[106m\x1B[30m${net.api}\x1B[0m${net.res == null ? '' : ' Headers: ${net.headers}\nData: $msgColor${net.res}\x1B[0m'}\nSpend: ${net.spend} ms\n--------------------------------',
             time: DateTime.now());
     }
   }
