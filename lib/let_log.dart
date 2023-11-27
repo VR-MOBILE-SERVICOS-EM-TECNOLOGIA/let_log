@@ -6,10 +6,12 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:pluto_grid/pluto_grid.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:sqflite/sqlite_api.dart';
 part 'log_widget.dart';
 part 'net_widget.dart';
 part 'db_widget.dart';
+part 'shared_prefs_widget.dart';
 
 enum _Type { log, debug, warn, error }
 List<String> _printNames = ["😄", "🐛", "❗", "❌", "⬆️", "⬇️"];
@@ -73,15 +75,19 @@ class _Config {
 
 class Logger extends StatefulWidget {
   final Future<Database?>? dbFuture;
+  final SharedPreferences? sheredPrefs;
   final Function()? onSelectFirstTab;
   final Function()? onSelectSecondTab;
   final Function()? onSelectThirdTab;
+  final Function()? onSelectFourthTab;
 
   const Logger({
     this.dbFuture,
+    this.sheredPrefs,
     this.onSelectFirstTab,
     this.onSelectSecondTab,
     this.onSelectThirdTab,
+    this.onSelectFourthTab,
   });
 
   static bool enabled = true;
@@ -168,6 +174,8 @@ class Logger extends StatefulWidget {
     properties.add(ObjectFlagProperty<Function()?>.has('onSelectLogTabs', onSelectFirstTab));
     properties.add(ObjectFlagProperty<Function()?>.has('onSelectNetTabs', onSelectSecondTab));
     properties.add(ObjectFlagProperty<Function()?>.has('onSelectDBTabs', onSelectThirdTab));
+    properties.add(DiagnosticsProperty<SharedPreferences?>('sheredPrefs', sheredPrefs));
+    properties.add(ObjectFlagProperty<Function()?>.has('onSelectFourthTab', onSelectFourthTab));
   }
 }
 class LoggerState extends State<Logger> with TickerProviderStateMixin {
@@ -186,7 +194,7 @@ class LoggerState extends State<Logger> with TickerProviderStateMixin {
     if (widget.dbFuture != null) {
       tabsList.add(
         const Tab(
-          child: Text("Banco de dados",
+          child: Text("SQLite",
           textAlign: TextAlign.center)
         )
       );
@@ -195,6 +203,20 @@ class LoggerState extends State<Logger> with TickerProviderStateMixin {
         DBWidget(dbFuture: widget.dbFuture)
       );
     }
+
+    if (widget.sheredPrefs != null) {
+      tabsList.add(
+        const Tab(
+          child: Text("Shared Prefs",
+          textAlign: TextAlign.center)
+        )
+      );
+
+      tabsViewsList.add(
+        SharedPrefsWidget(sheredPrefs: widget.sheredPrefs)
+      );
+    }
+
     tabsController = TabController(length: tabsList.length, vsync: this);
     tabsController.addListener(() {
       if (!tabsController.indexIsChanging) {
@@ -209,9 +231,14 @@ class LoggerState extends State<Logger> with TickerProviderStateMixin {
               widget.onSelectSecondTab!();
             }
           break;
-          default:
+          case 2:
             if (widget.onSelectThirdTab != null) {
               widget.onSelectThirdTab!();
+            }
+          break;
+          default:
+            if (widget.onSelectFourthTab != null) {
+              widget.onSelectFourthTab!();
             }
         }
       }
