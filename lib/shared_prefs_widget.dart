@@ -38,8 +38,37 @@ class _SharedPrefsWidgetState extends State<SharedPrefsWidget> {
 
   @override
   void dispose() {
+    stateManager.removeListener(handleCurrentSelectionState);
     _scrollController!.dispose();
     super.dispose();
+  }
+
+  void handleCurrentSelectionState() {
+    if (stateManager.hasFocus) {
+      Clipboard.setData(ClipboardData(text: stateManager.currentCell!.value.toString()));
+      showDialog<void>(
+        context: context,
+        builder: (context) {
+          return AlertDialog(
+            content: const SingleChildScrollView(
+              child: ListBody(
+                children: <Widget>[
+                  Text('Enviado para área de transferência!'),
+                ],
+              ),
+            ),
+            actions: <Widget>[
+              TextButton(
+                child: const Text('Ok'),
+                onPressed: () {
+                  Navigator.of(context).pop();
+                },
+              ),
+            ],
+          );
+        },
+      );
+    }
   }
 
   @override
@@ -56,7 +85,7 @@ class _SharedPrefsWidgetState extends State<SharedPrefsWidget> {
           title: 'Valor',
           field: 'valor',
           type: PlutoColumnType.text(),
-          enableAutoEditing: true,
+          enableEditingMode: false,
         ),
       ],
       rows: _tablesList.map<PlutoRow>((row) => PlutoRow(
@@ -65,6 +94,10 @@ class _SharedPrefsWidgetState extends State<SharedPrefsWidget> {
           'valor': PlutoCell(value: row.values.first),
         },
       )).toList(),
+      onLoaded: (event) {
+        stateManager = event.stateManager;
+        stateManager.addListener(handleCurrentSelectionState);
+      },
     );
   }
   @override
