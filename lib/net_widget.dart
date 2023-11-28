@@ -127,6 +127,16 @@ class _NetWidgetState extends State<NetWidget> {
                     "[${item.type}] ${item.api}",
                     style: const TextStyle(fontSize: 16),
                   ),
+                  if (item.showDetail && item.reqHeaders != null)
+                    Padding(
+                      padding: const EdgeInsets.only(top: 8),
+                      child: Text(
+                        "Req Headers: ${item.reqHeaders ?? ""}",
+                        maxLines: 100,
+                        overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(fontSize: 14),
+                      ),
+                    ),
                   if (item.showDetail)
                     Padding(
                       padding: const EdgeInsets.only(top: 8),
@@ -137,21 +147,21 @@ class _NetWidgetState extends State<NetWidget> {
                         style: const TextStyle(fontSize: 14),
                       ),
                     ),
-                  if (item.showDetail)
+                  if (item.showDetail && item.resHeaders != null)
                     Padding(
                       padding: const EdgeInsets.only(top: 8),
                       child: Text(
-                        "Response: ${item.res ?? ""}",
+                        "Res Headers: ${item.resHeaders ?? ""}",
                         maxLines: 100,
                         overflow: TextOverflow.ellipsis,
                         style: const TextStyle(fontSize: 14),
                       ),
                     ),
-                  if (item.showDetail && item.headers != null)
+                  if (item.showDetail)
                     Padding(
                       padding: const EdgeInsets.only(top: 8),
                       child: Text(
-                        "Headers: ${item.headers ?? ""}",
+                        "Response: ${item.res ?? ""}",
                         maxLines: 100,
                         overflow: TextOverflow.ellipsis,
                         style: const TextStyle(fontSize: 14),
