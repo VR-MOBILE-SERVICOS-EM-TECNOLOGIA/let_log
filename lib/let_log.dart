@@ -381,7 +381,8 @@ class LoggerNet extends ChangeNotifier {
   int status = 100;
   int spend = 0;
   String? res;
-  String? headers;
+  String? reqHeaders;
+  String? resHeaders;
   bool showDetail = false;
   int _reqSize = -1;
   int _resSize = -1;
@@ -390,7 +391,8 @@ class LoggerNet extends ChangeNotifier {
     this.api,
     this.type,
     this.req,
-    this.headers,
+    this.reqHeaders,
+    this.resHeaders,
     this.start,
     this.res,
     this.spend = 0,
@@ -436,9 +438,11 @@ class LoggerNet extends ChangeNotifier {
     sb.writeln();
     sb.writeln("Start: $start");
     sb.writeln("Spend: $spend ms");
-    sb.writeln("Headers: $headers");
+    sb.writeln("Req Headers: $reqHeaders");
     sb.writeln();
     sb.writeln("Request: $req");
+    sb.writeln();
+    sb.writeln("Res Headers: $resHeaders");
     sb.writeln();
     sb.writeln("Response: $res");
     return sb.toString();
@@ -450,7 +454,7 @@ class LoggerNet extends ChangeNotifier {
       api: api,
       type: type,
       status: status,
-      headers: headers?.toString(),
+      reqHeaders: headers?.toString(),
       req: data?.toString(),
       start: DateTime.now(),
     );
@@ -466,10 +470,10 @@ class LoggerNet extends ChangeNotifier {
     if (Logger.config.printNet) {
       if (kIsWeb)
         debugPrint(
-            '${_printNames[4]} ${DateTime.now()} ${'$type: '}${net.api}${net.req == null ? '' : ' Headers: ${net.headers}\nData: ${net.req}'}\n--------------------------------');
+            '${_printNames[4]} ${DateTime.now()} ${'$type: '}${net.api}${net.req == null ? '' : ' Headers: ${net.reqHeaders}\nData: ${net.req}'}\n--------------------------------');
       else
         dev.log(
-            '${_printNames[4]} (${DateTime.now()}) ${'$type: '}\x1B[103m\x1B[30m${net.api}\x1B[0m${net.req == null ? '' : ' Headers: ${net.headers}\nData: $msgColor${net.req}\x1B[0m'}\n--------------------------------',
+            '${_printNames[4]} (${DateTime.now()}) ${'$type: '}\x1B[103m\x1B[30m${net.api}\x1B[0m${net.req == null ? '' : ' Headers: ${net.reqHeaders}\nData: $msgColor${net.req}\x1B[0m'}\n--------------------------------',
             time: DateTime.now());
     }
   }
@@ -487,13 +491,13 @@ class LoggerNet extends ChangeNotifier {
       _map.remove(net);
       net.spend = DateTime.now().difference(net.start!).inMilliseconds;
       net.status = status;
-      net.headers = headers?.toString();
+      net.resHeaders = headers?.toString();
       net.res = data?.toString();
       length.notifyListeners();
     } else {
       net = LoggerNet(api: api, start: DateTime.now(), type: type);
       net.status = status;
-      net.headers = headers?.toString();
+      net.resHeaders = headers?.toString();
       net.res = data?.toString();
       list.add(net);
       _clearWhenTooMuch();
@@ -502,10 +506,10 @@ class LoggerNet extends ChangeNotifier {
     if (Logger.config.printNet) {
       if (kIsWeb)
         debugPrint(
-            '${_printNames[5]} ${DateTime.now()} ${net.type == null ? '' : '${net.type}: '}{net.api}${net.res == null ? '' : ' Headers: ${net.headers}\nData: ${net.res}'}\nSpend: ${net.spend} ms\n--------------------------------');
+            '${_printNames[5]} ${DateTime.now()} ${net.type == null ? '' : '${net.type}: '}{net.api}${net.res == null ? '' : ' Headers: ${net.resHeaders}\nData: ${net.res}'}\nSpend: ${net.spend} ms\n--------------------------------');
       else
         dev.log(
-            '${_printNames[5]} (${DateTime.now()}) ${net.type == null ? '' : '${net.type}: '}\x1B[106m\x1B[30m${net.api}\x1B[0m${net.res == null ? '' : ' Headers: ${net.headers}\nData: $msgColor${net.res}\x1B[0m'}\nSpend: ${net.spend} ms\n--------------------------------',
+            '${_printNames[5]} (${DateTime.now()}) ${net.type == null ? '' : '${net.type}: '}\x1B[106m\x1B[30m${net.api}\x1B[0m${net.res == null ? '' : ' Headers: ${net.resHeaders}\nData: $msgColor${net.res}\x1B[0m'}\nSpend: ${net.spend} ms\n--------------------------------',
             time: DateTime.now());
     }
   }
