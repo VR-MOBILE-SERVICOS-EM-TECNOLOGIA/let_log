@@ -106,7 +106,6 @@ class _LogWidgetState extends State<LogWidget> {
         Clipboard.setData(data);
         showDialog(
           context: context,
-          barrierDismissible: true,
           builder: (context) {
             return const Center(
               child: Material(
