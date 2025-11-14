@@ -208,7 +208,6 @@ class _NetWidgetState extends State<NetWidget> {
                 Clipboard.setData(data);
                 showDialog(
                   context: context,
-                  barrierDismissible: true,
                   builder: (context) {
                     return const Center(
                       child: Material(
