@@ -28,6 +28,7 @@ String _buildRequestJson(LoggerNet n) {
     'url': n.api,
     'method': (n.type ?? 'HTTP').toUpperCase(),
     'status': n.status,
+    'startedAt': n.start?.toIso8601String(),
     'durationMs': n.spend,
     'requestHeaders': decode(n.reqHeaders),
     'requestBody': decode(n.req),

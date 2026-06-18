@@ -84,6 +84,7 @@ void main() {
         type: 'POST',
         status: 200,
         spend: 5,
+        start: DateTime(2026, 6, 18, 16, 42, 20, 787),
         req: '{"a":1}',
         res: '{"ok":true}',
       );
@@ -92,6 +93,7 @@ void main() {
       expect(decoded['url'], equals('h/u'));
       expect(decoded['method'], equals('POST'));
       expect(decoded['status'], equals(200));
+      expect(decoded['startedAt'], equals('2026-06-18T16:42:20.787'));
       expect(decoded['responseBody'], equals({'ok': true}));
     });
   });
