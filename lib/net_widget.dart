@@ -275,7 +275,7 @@ class _NetWidgetState extends State<NetWidget>
   Widget _buildItem(LoggerNet item, _LetLogTheme t) {
     final sc = _statusColors(item, t);
     return _CopyTarget(
-      copyText: item.toString(),
+      copyText: _buildRequestJson(item),
       onTap: () => setState(() => item.showDetail = !item.showDetail),
       child: Container(
         decoration: BoxDecoration(
@@ -392,11 +392,30 @@ class _NetWidgetState extends State<NetWidget>
           Wrap(
             spacing: 7,
             runSpacing: 6,
+            crossAxisAlignment: WrapCrossAlignment.center,
             children: [
               FilledButton.icon(
                 style: FilledButton.styleFrom(
                   backgroundColor: t.accent,
                   foregroundColor: t.onAccent,
+                  visualDensity: VisualDensity.compact,
+                ),
+                onPressed: () {
+                  Clipboard.setData(
+                    ClipboardData(text: _buildRequestJson(item)),
+                  );
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                      content: Text('Copiado.'),
+                      duration: Duration(seconds: 1),
+                    ),
+                  );
+                },
+                icon: const Icon(Icons.content_copy, size: 16),
+                label: const Text('Copiar JSON'),
+              ),
+              OutlinedButton.icon(
+                style: OutlinedButton.styleFrom(
                   visualDensity: VisualDensity.compact,
                 ),
                 onPressed: () {
@@ -409,54 +428,71 @@ class _NetWidgetState extends State<NetWidget>
                   );
                 },
                 icon: const Icon(Icons.terminal, size: 16),
-                label: const Text('Copiar cURL'),
+                label: const Text('cURL'),
               ),
-              OutlinedButton.icon(
-                style: OutlinedButton.styleFrom(
-                  visualDensity: VisualDensity.compact,
-                ),
-                onPressed: () {
-                  Clipboard.setData(ClipboardData(text: item.toString()));
+              PopupMenuButton<String>(
+                icon: Icon(Icons.more_vert, size: 18, color: t.textMuted),
+                color: t.card,
+                tooltip: 'Outros formatos',
+                onSelected: (v) {
+                  final text = v == 'text'
+                      ? item.toString()
+                      : v == 'req'
+                      ? _prettyJson(item.req ?? '')
+                      : _prettyJson(item.res ?? '');
+                  Clipboard.setData(ClipboardData(text: text));
                   ScaffoldMessenger.of(context).showSnackBar(
                     const SnackBar(
-                      content: Text('Requisição copiada.'),
+                      content: Text('Copiado.'),
                       duration: Duration(seconds: 1),
                     ),
                   );
                 },
-                icon: const Icon(Icons.content_copy, size: 16),
-                label: const Text('Copiar tudo'),
+                itemBuilder: (context) => const [
+                  PopupMenuItem(
+                    value: 'text',
+                    child: Text('Copiar como texto'),
+                  ),
+                  PopupMenuItem(
+                    value: 'req',
+                    child: Text('Copiar requisição (JSON)'),
+                  ),
+                  PopupMenuItem(
+                    value: 'res',
+                    child: Text('Copiar resposta (JSON)'),
+                  ),
+                ],
               ),
             ],
           ),
           const SizedBox(height: 11),
           _Section(
             title: 'General',
-            copyText: item.toString(),
+            copyText: _buildRequestJson(item),
             child: _generalBlock(item, t),
           ),
           if (_has(item.reqHeaders))
             _Section(
               title: 'Request Headers',
-              copyText: item.reqHeaders!,
+              copyText: _prettyJson(item.reqHeaders!),
               child: _JsonView(item.reqHeaders!),
             ),
           if (_has(item.req))
             _Section(
               title: 'Request Body',
-              copyText: item.req!,
+              copyText: _prettyJson(item.req!),
               child: _JsonView(item.req!),
             ),
           if (_has(item.resHeaders))
             _Section(
               title: 'Response Headers',
-              copyText: item.resHeaders!,
+              copyText: _prettyJson(item.resHeaders!),
               child: _JsonView(item.resHeaders!),
             ),
           if (_has(item.res))
             _Section(
               title: 'Response Body',
-              copyText: item.res!,
+              copyText: _prettyJson(item.res!),
               child: _JsonView(item.res!),
             ),
         ],

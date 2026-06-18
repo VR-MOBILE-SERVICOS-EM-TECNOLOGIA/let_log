@@ -14,3 +14,9 @@ String debugExportSession({
   required List<LoggerNet> nets,
   required List<LoggerLog> logs,
 }) => _exportSession(nets: nets, logs: logs);
+
+@visibleForTesting
+String debugBuildRequestJson(LoggerNet n) => _buildRequestJson(n);
+
+@visibleForTesting
+String? debugEncodeData(Object? data) => _encodeData(data);

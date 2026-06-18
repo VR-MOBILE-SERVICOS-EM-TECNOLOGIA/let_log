@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 import 'package:flutter_test/flutter_test.dart';
 import 'package:let_log/let_log.dart';
 
@@ -55,6 +57,42 @@ void main() {
       final result = debugExportSession(nets: [net], logs: [log]);
       expect(result, contains('=== LetLog session export ==='));
       expect(result, contains('Logs: 1 | Requests: 1'));
+    });
+  });
+
+  group('debugEncodeData', () {
+    test('Map is encoded as valid JSON', () {
+      final result = debugEncodeData({'a': 1});
+      expect(result, isNotNull);
+      final decoded = json.decode(result!);
+      expect(decoded, equals({'a': 1}));
+    });
+
+    test('String input is returned unchanged', () {
+      expect(debugEncodeData('hello'), equals('hello'));
+    });
+
+    test('null returns null', () {
+      expect(debugEncodeData(null), isNull);
+    });
+  });
+
+  group('debugBuildRequestJson', () {
+    test('produces valid nested JSON with correct fields', () {
+      final n = LoggerNet(
+        api: 'h/u',
+        type: 'POST',
+        status: 200,
+        spend: 5,
+        req: '{"a":1}',
+        res: '{"ok":true}',
+      );
+      final result = debugBuildRequestJson(n);
+      final decoded = json.decode(result) as Map<String, dynamic>;
+      expect(decoded['url'], equals('h/u'));
+      expect(decoded['method'], equals('POST'));
+      expect(decoded['status'], equals(200));
+      expect(decoded['responseBody'], equals({'ok': true}));
     });
   });
 }

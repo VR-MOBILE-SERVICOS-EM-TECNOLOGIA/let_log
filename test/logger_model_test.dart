@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 import 'package:flutter_test/flutter_test.dart';
 import 'package:let_log/let_log.dart';
 
@@ -95,6 +97,14 @@ void main() {
     test('types registry updated', () {
       Logger.net('ws/y', type: 'Socket');
       expect(LoggerNet.types, contains('Socket'));
+    });
+
+    test('request data captured as valid JSON', () {
+      Logger.net('api/x', data: {'a': 1});
+      final req = LoggerNet.list.last.req;
+      expect(req, isNotNull);
+      final decoded = json.decode(req!);
+      expect(decoded, equals({'a': 1}));
     });
   });
 }

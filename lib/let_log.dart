@@ -654,8 +654,8 @@ class LoggerNet extends ChangeNotifier {
       api: api,
       type: type,
       status: status,
-      reqHeaders: headers?.toString(),
-      req: data?.toString(),
+      reqHeaders: _encodeData(headers),
+      req: _encodeData(data),
       start: DateTime.now(),
     );
     list.add(net);
@@ -699,14 +699,14 @@ class LoggerNet extends ChangeNotifier {
       _map.remove(api);
       net.spend = DateTime.now().difference(net.start!).inMilliseconds;
       net.status = status;
-      net.resHeaders = headers?.toString();
-      net.res = data?.toString();
+      net.resHeaders = _encodeData(headers);
+      net.res = _encodeData(data);
       length.notifyListeners();
     } else {
       net = LoggerNet(api: api, start: DateTime.now(), type: type);
       net.status = status;
-      net.resHeaders = headers?.toString();
-      net.res = data?.toString();
+      net.resHeaders = _encodeData(headers);
+      net.res = _encodeData(data);
       list.add(net);
       if (type != null && type != "" && !types.contains(type)) {
         types.add(type);

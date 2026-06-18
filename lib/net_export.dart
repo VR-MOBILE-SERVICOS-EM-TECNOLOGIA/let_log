@@ -1,5 +1,42 @@
 part of let_log;
 
+/// Stores data as JSON when it is structured (Map/List); keeps Strings as-is;
+/// falls back to toString for anything non-encodable.
+String? _encodeData(Object? data) {
+  if (data == null) return null;
+  if (data is String) return data;
+  try {
+    return json.encode(data);
+  } catch (_) {
+    return data.toString();
+  }
+}
+
+/// Full request as a pretty-printed JSON object. Bodies/headers that are
+/// valid JSON are embedded as real nested JSON (not escaped strings).
+String _buildRequestJson(LoggerNet n) {
+  Object? decode(String? s) {
+    if (s == null || s.trim().isEmpty || s == 'null') return null;
+    try {
+      return json.decode(s);
+    } catch (_) {
+      return s;
+    }
+  }
+
+  final map = <String, Object?>{
+    'url': n.api,
+    'method': (n.type ?? 'HTTP').toUpperCase(),
+    'status': n.status,
+    'durationMs': n.spend,
+    'requestHeaders': decode(n.reqHeaders),
+    'requestBody': decode(n.req),
+    'responseHeaders': decode(n.resHeaders),
+    'responseBody': decode(n.res),
+  };
+  return const JsonEncoder.withIndent('  ').convert(map);
+}
+
 String _buildCurl(LoggerNet n) {
   final method = (n.type == null || n.type!.isEmpty)
       ? 'GET'
