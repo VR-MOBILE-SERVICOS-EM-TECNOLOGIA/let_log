@@ -1,245 +1,260 @@
 part of let_log;
 
 class LogWidget extends StatefulWidget {
-  const LogWidget({Key? key}) : super(key: key);
+  const LogWidget({super.key});
 
   @override
-  _LogWidgetState createState() => _LogWidgetState();
+  State<LogWidget> createState() => _LogWidgetState();
 }
 
-class _LogWidgetState extends State<LogWidget> {
-  bool _showSearch = false;
-  String _keyword = "";
-  TextEditingController? _textController;
-  ScrollController? _scrollController;
-  FocusNode? _focusNode;
-  bool _goDown = true;
-
-  @override
-  void initState() {
-    _textController = TextEditingController(text: _keyword);
-    _scrollController = ScrollController();
-    _focusNode = FocusNode();
-    super.initState();
-  }
-
-  @override
-  void dispose() {
-    _textController!.dispose();
-    _scrollController!.dispose();
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      body: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: <Widget>[
-          _buildTools(),
-          Expanded(
-            child: ValueListenableBuilder<int>(
-              valueListenable: LoggerLog.length,
-              builder: (context, value, child) {
-                List<LoggerLog> logs = LoggerLog.list;
-                if (_selectTypes.length < 4 || _keyword.isNotEmpty) {
-                  logs = LoggerLog.list.where((test) {
-                    return _selectTypes.contains(test.type) &&
-                        test.contains(_keyword);
-                  }).toList();
-                }
-
-                final len = logs.length;
-                return ListView.separated(
-                  itemBuilder: (context, index) {
-                    final item = Logger.config.reverse
-                        ? logs[len - index - 1]
-                        : logs[index];
-                    final color = _getColor(item.type, context);
-                    return _buildItem(item, color);
-                  },
-                  itemCount: len,
-                  controller: _scrollController,
-                  separatorBuilder: (context, index) {
-                    return const Divider(
-                      height: 10,
-                      thickness: 0.5,
-                      color: Color(0xFFE0E0E0),
-                    );
-                  },
-                );
-              },
-            ),
-          ),
-        ],
-      ),
-      floatingActionButton: FloatingActionButton(
-        onPressed: () {
-          if (_goDown) {
-            _scrollController!.animateTo(
-              _scrollController!.position.maxScrollExtent * 2,
-              curve: Curves.easeOut,
-              duration: const Duration(milliseconds: 300),
-            );
-          } else {
-            _scrollController!.animateTo(
-              0,
-              curve: Curves.easeOut,
-              duration: const Duration(milliseconds: 300),
-            );
-          }
-          _goDown = !_goDown;
-          setState(() {});
-        },
-        mini: true,
-        child: Icon(
-          _goDown ? Icons.arrow_downward : Icons.arrow_upward,
-        ),
-      ),
-    );
-  }
-
-  Widget _buildItem(LoggerLog item, Color? color) {
-    return InkWell(
-      onTap: () {
-        final ClipboardData data = ClipboardData(text: item.toString());
-        Clipboard.setData(data);
-        showDialog(
-          context: context,
-          builder: (context) {
-            return const Center(
-              child: Material(
-                color: Colors.transparent,
-                child: Text(
-                  "copy success!",
-                  style: TextStyle(color: Colors.white, fontSize: 30),
-                ),
-              ),
-            );
-          },
-        );
-      },
-      child: Padding(
-        padding: const EdgeInsets.fromLTRB(16, 8, 16, 8),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              "${item.tabName} ${item.message} (${item.start!.hour}:${item.start!.minute}:${item.start!.second}:${item.start!.millisecond})",
-              style: TextStyle(fontSize: 16, color: color),
-            ),
-            if (item.detail != null && item.detail != 'null')
-              Padding(
-                padding: const EdgeInsets.only(top: 8),
-                child: Text(
-                  item.detail!,
-                  style: TextStyle(fontSize: 14, color: color),
-                  overflow: TextOverflow.ellipsis,
-                  maxLines: 20,
-                ),
-              )
-          ],
-        ),
-      ),
-    );
-  }
-
-  Color? _getColor(_Type? type, BuildContext context) {
-    switch (type) {
-      case _Type.debug:
-        return Colors.blue;
-      case _Type.warn:
-        return const Color(0xFFF57F17);
-      case _Type.error:
-        return Colors.red;
-      default:
-        return Theme.of(context).textTheme.bodyLarge!.color;
-    }
-  }
-
+class _LogWidgetState extends State<LogWidget>
+    with _LiveListController<LogWidget> {
   final List<_Type> _selectTypes = [
     _Type.log,
     _Type.debug,
     _Type.warn,
-    _Type.error
+    _Type.error,
   ];
 
-  Widget _buildTools() {
-    final List<ChoiceChip> arr = [];
-    _Type.values.forEach((f) {
-      arr.add(
-        ChoiceChip(
-          label: Text(
-            _getTabName(f.index),
-            style: const TextStyle(fontSize: 14),
+  @override
+  void initState() {
+    super.initState();
+    attachLiveList(LoggerLog.length, () => LoggerLog.list.length);
+  }
+
+  @override
+  void dispose() {
+    detachLiveList();
+    super.dispose();
+  }
+
+  bool _matchesSearch(LoggerLog l) {
+    if (keyword.isEmpty) return true;
+    final k = keyword.toLowerCase();
+    bool inMsg() => '${l.message} ${l.origin}'.toLowerCase().contains(k);
+    bool inDet() => (l.detail ?? '').toLowerCase().contains(k);
+    switch (searchScope) {
+      case 'Mensagem':
+        return inMsg();
+      case 'Detalhe':
+        return inDet();
+      default:
+        return inMsg() || inDet();
+    }
+  }
+
+  // Chronological order; the ListView renders with `reverse: true` so the
+  // newest log appears at the top while keeping the scroll position stable.
+  List<LoggerLog> _filteredLogs() => LoggerLog.list
+      .where((l) => _selectTypes.contains(l.type) && _matchesSearch(l))
+      .toList(growable: false);
+
+  @override
+  Widget build(BuildContext context) {
+    final t = _LetLogTheme.of(context);
+    return Scaffold(
+      backgroundColor: t.surface,
+      body: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Rebuild the toolbar (and its totalizers) whenever the log count
+          // changes, including on clear.
+          ValueListenableBuilder<int>(
+            valueListenable: LoggerLog.length,
+            builder: (context, _, __) => searchActive
+                ? buildSearchToolbar(
+                    scopes: const ['Tudo', 'Mensagem', 'Detalhe'],
+                    shown: _filteredLogs().length,
+                    total: LoggerLog.list.length,
+                  )
+                : _buildTools(t),
           ),
-          selectedColor: const Color(0xFFCBE2F6),
-          selected: _selectTypes.contains(f),
-          onSelected: (value) {
-            _selectTypes.contains(f)
-                ? _selectTypes.remove(f)
-                : _selectTypes.add(f);
-            setState(() {});
-          },
+          Expanded(
+            child: Stack(
+              children: [
+                ValueListenableBuilder<int>(
+                  valueListenable: LoggerLog.length,
+                  builder: (context, _, __) {
+                    final logs = _filteredLogs();
+                    if (logs.isEmpty) {
+                      return _EmptyState(
+                        keyword.isEmpty
+                            ? 'Nenhum log capturado ainda.'
+                            : 'Nenhum resultado para "$keyword".',
+                      );
+                    }
+                    return Scrollbar(
+                      controller: scrollController,
+                      thumbVisibility: true,
+                      child: ListView.separated(
+                        controller: scrollController,
+                        reverse: true,
+                        padding: const EdgeInsets.fromLTRB(10, 8, 14, 88),
+                        itemCount: logs.length,
+                        separatorBuilder: (_, __) => const SizedBox(height: 9),
+                        itemBuilder: (context, i) => _buildItem(logs[i], t),
+                      ),
+                    );
+                  },
+                ),
+                buildLiveJumpButton(
+                  newItemsLabel: '$newItemsCount novo(s) log(s)',
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildTools(_LetLogTheme t) {
+    final chips = _Type.values.map((type) {
+      final sel = _selectTypes.contains(type);
+      return Padding(
+        padding: const EdgeInsets.only(right: 6),
+        child: FilterChip(
+          label: Text(_getTabName(type.index)),
+          selected: sel,
+          visualDensity: VisualDensity.compact,
+          selectedColor: t.accentWeak,
+          onSelected: (v) => setState(
+            () => v ? _selectTypes.add(type) : _selectTypes.remove(type),
+          ),
         ),
       );
-    });
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(16, 5, 0, 5),
-      child: AnimatedCrossFade(
-        crossFadeState:
-            _showSearch ? CrossFadeState.showSecond : CrossFadeState.showFirst,
-        duration: const Duration(milliseconds: 300),
-        firstChild: Row(
-          children: [
-            Expanded(
-              child: Wrap(
-                spacing: 5,
-                children: arr,
-              ),
-            ),
-            const IconButton(
-              icon: Icon(Icons.clear),
-              onPressed: LoggerLog.clear,
-            ),
-            IconButton(
-              icon: _keyword.isEmpty
-                  ? const Icon(Icons.search)
-                  : const Icon(Icons.filter_1),
-              onPressed: () {
-                _showSearch = true;
-                setState(() {});
-                _focusNode!.requestFocus();
-              },
-            ),
-          ],
-        ),
-        secondChild: Row(
-          children: [
-            Expanded(
-              child: SizedBox(
-                height: 36,
-                child: TextField(
-                  decoration: const InputDecoration(
-                    border: OutlineInputBorder(),
-                    contentPadding: EdgeInsets.all(6),
-                  ),
-                  controller: _textController,
-                  focusNode: _focusNode,
+    }).toList();
+    final errors = LoggerLog.list.where((l) => l.type == _Type.error).length;
+
+    return Container(
+      color: t.card,
+      padding: const EdgeInsets.fromLTRB(10, 8, 6, 6),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Expanded(
+                child: SingleChildScrollView(
+                  scrollDirection: Axis.horizontal,
+                  child: Row(children: chips),
                 ),
               ),
+              IconButton(
+                tooltip: 'Limpar logs',
+                icon: const Icon(Icons.delete_outline),
+                color: t.textMuted,
+                onPressed: LoggerLog.clear,
+              ),
+              IconButton(
+                tooltip: 'Buscar',
+                icon: const Icon(Icons.search),
+                color: t.textMuted,
+                onPressed: openSearch,
+              ),
+            ],
+          ),
+          Padding(
+            padding: const EdgeInsets.only(left: 2, top: 2),
+            child: Row(
+              children: [
+                Text(
+                  '${LoggerLog.list.length} logs',
+                  style: TextStyle(
+                    color: t.textMuted,
+                    fontSize: 11.5,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+                const SizedBox(width: 14),
+                Text(
+                  '$errors erros',
+                  style: TextStyle(
+                    color: t.err.fg,
+                    fontSize: 11.5,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+              ],
             ),
-            IconButton(
-              icon: const Icon(Icons.search),
-              onPressed: () {
-                _showSearch = false;
-                _keyword = _textController!.text;
-                setState(() {});
-              },
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildItem(LoggerLog item, _LetLogTheme t) {
+    final sc = _statusColorsForLog(item.type, t);
+    final isError = item.type == _Type.error;
+    return _CopyTarget(
+      copyText: item.toString(),
+      onTap: () => setState(() => item.showDetail = !item.showDetail),
+      child: Container(
+        decoration: BoxDecoration(
+          color: isError ? t.err.bg : t.card,
+          border: Border.all(
+            color: isError ? t.err.fg.withValues(alpha: 0.4) : t.border,
+          ),
+          borderRadius: BorderRadius.circular(13),
+        ),
+        padding: const EdgeInsets.all(12),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Wrap(
+              spacing: 7,
+              runSpacing: 4,
+              crossAxisAlignment: WrapCrossAlignment.center,
+              children: [
+                _Pill(text: item.label, fg: sc.fg, bg: sc.bg),
+                _MetaText(_formatTimestamp(item.start)),
+                _MetaText(item.origin),
+              ],
             ),
+            const SizedBox(height: 8),
+            Text(
+              item.displayMessage,
+              style: TextStyle(
+                color: sc.fg,
+                fontSize: 14,
+                height: 1.3,
+                fontWeight: isError ? FontWeight.w700 : FontWeight.w500,
+              ),
+            ),
+            if (item.showDetail &&
+                item.detail != null &&
+                item.detail!.trim().isNotEmpty) ...[
+              const SizedBox(height: 10),
+              _Section(
+                title: 'Stack trace / detalhe',
+                copyText: item.detail!,
+                child: SelectableText(
+                  item.detail!,
+                  style: TextStyle(
+                    color: t.mono,
+                    fontSize: 12.5,
+                    height: 1.4,
+                    fontFamily: 'monospace',
+                  ),
+                ),
+              ),
+            ],
           ],
         ),
       ),
     );
+  }
+
+  _StatusColors _statusColorsForLog(_Type? type, _LetLogTheme t) {
+    switch (type) {
+      case _Type.debug:
+        return t.info;
+      case _Type.warn:
+        return t.warn;
+      case _Type.error:
+        return t.err;
+      default:
+        return _StatusColors(t.textPrimary, t.accentWeak);
+    }
   }
 }

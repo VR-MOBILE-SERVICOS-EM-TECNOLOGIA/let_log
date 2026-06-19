@@ -12,12 +12,67 @@ part 'log_widget.dart';
 part 'net_widget.dart';
 part 'db_widget.dart';
 part 'shared_prefs_widget.dart';
+part 'theme.dart';
+part 'live_list.dart';
+part 'widgets.dart';
+part 'net_export.dart';
+part 'testing.dart';
 
 enum _Type { log, debug, warn, error }
+
 List<String> _printNames = ["😄", "🐛", "❗", "❌", "⬆️", "⬇️"];
 List<String> _tabNames = ["[Log]", "[Debug]", "[Warn]", "[Error]"];
 List<int> _tabLevel = [500, 0, 1000, 1500];
 final RegExp _tabReg = RegExp(r"\[|\]");
+final RegExp _originReg = RegExp(r"^\[([^\]]+)\]\s*(.*)$", dotAll: true);
+
+const double _liveScrollTolerance = 48;
+
+String _formatTimestamp(DateTime? value) {
+  if (value == null) return "--:--:--.---";
+
+  String two(int number) => number.toString().padLeft(2, "0");
+  String three(int number) => number.toString().padLeft(3, "0");
+
+  return "${two(value.hour)}:${two(value.minute)}:${two(value.second)}.${three(value.millisecond)}";
+}
+
+String _formatBytes(int bytes) {
+  if (bytes < 1024) return "${bytes}B";
+  return "${(bytes / 1024).toStringAsFixed(1)}KB";
+}
+
+String _safePreview(String? value, {int maxLength = 220}) {
+  if (value == null || value.trim().isEmpty || value == "null") return "";
+
+  final normalized = value.trim().replaceAll(RegExp(r"\s+"), " ");
+  if (normalized.length <= maxLength) return normalized;
+  return "${normalized.substring(0, maxLength)}...";
+}
+
+String _extractResponseMessage(String? response) {
+  if (response == null || response.trim().isEmpty || response == "null")
+    return "";
+
+  final cleaned = response
+      .replaceFirst(RegExp(r"^Error:\s*", caseSensitive: false), "")
+      .trim();
+  try {
+    final decoded = json.decode(cleaned);
+    if (decoded is Map<String, dynamic>) {
+      for (final key in const ["msg", "message", "error", "return"]) {
+        final value = decoded[key];
+        if (value != null && value.toString().trim().isNotEmpty) {
+          return value.toString();
+        }
+      }
+    }
+  } catch (_) {
+    // Not JSON; use the raw response preview below.
+  }
+
+  return cleaned;
+}
 
 String _getTabName(int index) {
   return _tabNames[index].replaceAll(_tabReg, "");
@@ -94,45 +149,53 @@ class Logger extends StatefulWidget {
   static _Config config = _Config();
 
   /// Logging
-  static void log(Object time, Object message,
-      {Object? detail,
-      String timeColor = '\x1B[37m',
-      String msgColor = '\x1B[34m'}) {
+  static void log(
+    Object time,
+    Object message, {
+    Object? detail,
+    String timeColor = '\x1B[37m',
+    String msgColor = '\x1B[34m',
+  }) {
     if (enabled) {
-      LoggerLog.length.value++;
       LoggerLog.add(_Type.log, time, message, detail, timeColor, msgColor);
     }
   }
 
   /// Record debug information
-  static void debug(Object time, Object message,
-      {Object? detail,
-      String timeColor = '\x1B[37m',
-      String msgColor = '\x1B[34m'}) {
+  static void debug(
+    Object time,
+    Object message, {
+    Object? detail,
+    String timeColor = '\x1B[37m',
+    String msgColor = '\x1B[34m',
+  }) {
     if (enabled) {
-      LoggerLog.length.value++;
       LoggerLog.add(_Type.debug, time, message, detail, timeColor, msgColor);
     }
   }
 
   /// Record warnning information
-  static void warn(Object time, Object message,
-      {Object? detail,
-      String timeColor = '\x1B[37m',
-      String msgColor = '\x1B[34m'}) {
+  static void warn(
+    Object time,
+    Object message, {
+    Object? detail,
+    String timeColor = '\x1B[37m',
+    String msgColor = '\x1B[34m',
+  }) {
     if (enabled) {
-      LoggerLog.length.value++;
       LoggerLog.add(_Type.warn, time, message, detail, timeColor, msgColor);
     }
   }
 
   /// Record error information
-  static void error(Object time, Object message,
-      {Object? detail,
-      String timeColor = '\x1B[37m',
-      String msgColor = '\x1B[34m'}) {
+  static void error(
+    Object time,
+    Object message, {
+    Object? detail,
+    String timeColor = '\x1B[37m',
+    String msgColor = '\x1B[34m',
+  }) {
     if (enabled) {
-      LoggerLog.length.value++;
       LoggerLog.add(_Type.error, time, message, detail, timeColor, msgColor);
     }
   }
@@ -148,73 +211,106 @@ class Logger extends StatefulWidget {
   }
 
   /// Recording network information
-  static void net(String api,
-      {String type = "Http", int status = 100, Object? data, Object? headers}) {
-    if (enabled) LoggerNet.request(api, type, status, data, headers, '\x1B[32m');
+  static void net(
+    String api, {
+    String type = "Http",
+    int status = 100,
+    Object? data,
+    Object? headers,
+  }) {
+    if (enabled)
+      LoggerNet.request(api, type, status, data, headers, '\x1B[32m');
   }
 
   /// End of record network information, with statistics on duration and size.
-  static void endNet(String api,
-      {int status = 200, Object? data, Object? headers, String? type}) {
-    if (enabled) LoggerNet.response(api, status, data, headers, type, '\x1B[32m');
+  static void endNet(
+    String api, {
+    int status = 200,
+    Object? data,
+    Object? headers,
+    String? type,
+  }) {
+    if (enabled)
+      LoggerNet.response(api, status, data, headers, type, '\x1B[32m');
   }
 
   /// Clearance log
   static void clear() {
     LoggerLog.clear();
+    LoggerNet.clear();
   }
 
   @override
   LoggerState createState() => LoggerState();
-  
+
   @override
   void debugFillProperties(DiagnosticPropertiesBuilder properties) {
     super.debugFillProperties(properties);
-    properties.add(DiagnosticsProperty<Future<Database?>?>('dbFuture', dbFuture));
-    properties.add(ObjectFlagProperty<Function()?>.has('onSelectLogTabs', onSelectFirstTab));
-    properties.add(ObjectFlagProperty<Function()?>.has('onSelectNetTabs', onSelectSecondTab));
-    properties.add(ObjectFlagProperty<Function()?>.has('onSelectDBTabs', onSelectThirdTab));
-    properties.add(DiagnosticsProperty<SharedPreferences?>('sheredPrefs', sheredPrefs));
-    properties.add(ObjectFlagProperty<Function()?>.has('onSelectFourthTab', onSelectFourthTab));
+    properties.add(
+      DiagnosticsProperty<Future<Database?>?>('dbFuture', dbFuture),
+    );
+    properties.add(
+      ObjectFlagProperty<Function()?>.has('onSelectLogTabs', onSelectFirstTab),
+    );
+    properties.add(
+      ObjectFlagProperty<Function()?>.has('onSelectNetTabs', onSelectSecondTab),
+    );
+    properties.add(
+      ObjectFlagProperty<Function()?>.has('onSelectDBTabs', onSelectThirdTab),
+    );
+    properties.add(
+      DiagnosticsProperty<SharedPreferences?>('sheredPrefs', sheredPrefs),
+    );
+    properties.add(
+      ObjectFlagProperty<Function()?>.has(
+        'onSelectFourthTab',
+        onSelectFourthTab,
+      ),
+    );
   }
 }
+
 class LoggerState extends State<Logger> with TickerProviderStateMixin {
   late TabController tabsController;
-  final List<Tab> tabsList = [
-    const Tab(child: Text("Log")),
-    const Tab(child: Text("Net"))
-  ];
-  final List<Widget> tabsViewsList = [
-    const LogWidget(),
-    const NetWidget(),
-  ];
+  late final List<Tab> tabsList;
+  final List<Widget> tabsViewsList = [const LogWidget(), const NetWidget()];
 
   @override
   void initState() {
+    tabsList = [
+      const Tab(child: Text("Log")),
+      Tab(
+        child: ValueListenableBuilder<int>(
+          valueListenable: LoggerNet.length,
+          builder: (context, _, __) {
+            final errors = LoggerNet.list.where((n) => n.isError).length;
+            return Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const Text("Net"),
+                if (errors > 0) ...[
+                  const SizedBox(width: 6),
+                  _ErrorBadge(count: errors),
+                ],
+              ],
+            );
+          },
+        ),
+      ),
+    ];
+
     if (widget.dbFuture != null) {
       tabsList.add(
-        const Tab(
-          child: Text("SQLite",
-          textAlign: TextAlign.center)
-        )
+        const Tab(child: Text("SQLite", textAlign: TextAlign.center)),
       );
 
-      tabsViewsList.add(
-        DBWidget(dbFuture: widget.dbFuture)
-      );
+      tabsViewsList.add(DBWidget(dbFuture: widget.dbFuture));
     }
 
     if (widget.sheredPrefs != null) {
-      tabsList.add(
-        const Tab(
-          child: Text("Shared Prefs",
-          textAlign: TextAlign.center)
-        )
-      );
+      tabsList.add(const Tab(child: Text("Prefs")));
 
-      tabsViewsList.add(
-        SharedPrefsWidget(sheredPrefs: widget.sheredPrefs)
-      );
+      tabsViewsList.add(SharedPrefsWidget(sheredPrefs: widget.sheredPrefs));
     }
 
     tabsController = TabController(length: tabsList.length, vsync: this);
@@ -225,17 +321,17 @@ class LoggerState extends State<Logger> with TickerProviderStateMixin {
             if (widget.onSelectFirstTab != null) {
               widget.onSelectFirstTab!();
             }
-          break;
+            break;
           case 1:
             if (widget.onSelectSecondTab != null) {
               widget.onSelectSecondTab!();
             }
-          break;
+            break;
           case 2:
             if (widget.onSelectThirdTab != null) {
               widget.onSelectThirdTab!();
             }
-          break;
+            break;
           default:
             if (widget.onSelectFourthTab != null) {
               widget.onSelectFourthTab!();
@@ -248,25 +344,72 @@ class LoggerState extends State<Logger> with TickerProviderStateMixin {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: TabBar(
-          controller: tabsController,
-          tabs: tabsList,
-        ),
-        elevation: 0,
-      ),
-      body: TabBarView(
-        controller: tabsController,
-        children: tabsViewsList,
-      ),
+    final Color accent = Theme.of(context).colorScheme.primary;
+    return ValueListenableBuilder<ThemeMode>(
+      valueListenable: letLogThemeMode,
+      builder: (context, mode, _) {
+        final Brightness sys =
+            MediaQuery.maybeOf(context)?.platformBrightness ?? Brightness.light;
+        final Brightness b = mode == ThemeMode.system
+            ? sys
+            : (mode == ThemeMode.dark ? Brightness.dark : Brightness.light);
+        final theme = _LetLogTheme.resolve(b, accent);
+        return _LetLogScope(
+          theme: theme,
+          child: Scaffold(
+            backgroundColor: theme.surface,
+            appBar: AppBar(
+              backgroundColor: theme.chrome,
+              foregroundColor: theme.textPrimary,
+              elevation: 0,
+              scrolledUnderElevation: 0,
+              titleSpacing: 0,
+              title: TabBar(
+                controller: tabsController,
+                isScrollable: true,
+                tabAlignment: TabAlignment.start,
+                tabs: tabsList,
+                labelColor: theme.accent,
+                unselectedLabelColor: theme.textMuted,
+                indicatorColor: theme.accent,
+                indicatorWeight: 3,
+                labelStyle: const TextStyle(fontWeight: FontWeight.w800),
+                unselectedLabelStyle: const TextStyle(
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+              actions: [
+                IconButton(
+                  tooltip: 'Alternar tema',
+                  icon: Icon(
+                    b == Brightness.dark
+                        ? Icons.light_mode_outlined
+                        : Icons.dark_mode_outlined,
+                  ),
+                  onPressed: () {
+                    letLogThemeMode.value = b == Brightness.dark
+                        ? ThemeMode.light
+                        : ThemeMode.dark;
+                  },
+                ),
+              ],
+            ),
+            body: TabBarView(
+              controller: tabsController,
+              children: tabsViewsList,
+            ),
+          ),
+        );
+      },
     );
   }
 
   @override
   void debugFillProperties(DiagnosticPropertiesBuilder properties) {
     super.debugFillProperties(properties);
-    properties.add(DiagnosticsProperty<TabController>('tabsController', tabsController));
+    properties.add(
+      DiagnosticsProperty<TabController>('tabsController', tabsController),
+    );
   }
 }
 
@@ -280,6 +423,7 @@ class LoggerLog {
   final String? detail;
   final DateTime? start;
   String? id;
+  bool showDetail = false;
   LoggerLog({this.type, this.message, this.detail, this.start, this.id});
 
   String get typeName {
@@ -290,14 +434,32 @@ class LoggerLog {
     return _tabNames[type!.index];
   }
 
+  String get label {
+    return _getTabName(type!.index).toUpperCase();
+  }
+
+  String get origin {
+    final match = _originReg.firstMatch(message ?? "");
+    return match?.group(1) ?? "App";
+  }
+
+  String get displayMessage {
+    final match = _originReg.firstMatch(message ?? "");
+    return match?.group(2)?.trim().isNotEmpty == true
+        ? match!.group(2)!.trim()
+        : message ?? "";
+  }
+
   int get tabLevel {
     return _tabLevel[type!.index];
   }
 
   bool contains(String keyword) {
     if (keyword.isEmpty) return true;
-    return message != null && message!.contains(keyword) ||
-        detail != null && detail!.contains(keyword);
+    final normalizedKeyword = keyword.toLowerCase();
+    return message != null &&
+            message!.toLowerCase().contains(normalizedKeyword) ||
+        detail != null && detail!.toLowerCase().contains(normalizedKeyword);
   }
 
   @override
@@ -315,25 +477,37 @@ class LoggerLog {
     return sb.toString();
   }
 
-  static void add(_Type type, Object time, Object value, Object? detail,
-      String timeColor, String msgColor) {
+  static void add(
+    _Type type,
+    Object time,
+    Object value,
+    Object? detail,
+    String timeColor,
+    String msgColor,
+  ) {
     final log = LoggerLog(
       type: type,
       message: value.toString(),
-      detail: detail.toString(),
+      detail: detail?.toString(),
       start: DateTime.now(),
     );
     list.add(log);
     _clearWhenTooMuch();
+    length.value = list.length;
     if (Logger.config.printLog) {
+      final detailText = log.detail == null || log.detail == 'null'
+          ? ''
+          : ' ${log.detail}';
       if (kIsWeb)
         debugPrint(
-            '${log.typeName} $time${log.message}${log.detail == 'null' ? '' : ' ${log.detail}'}\n--------------------------------');
+          '${log.typeName} $time${log.message}$detailText\n--------------------------------',
+        );
       else {
         dev.log(
-            '${log.typeName} $timeColor$time$msgColor${log.message}\x1B[0m${log.detail == 'null' ? '' : ' ${log.detail}'}\n--------------------------------',
-            level: log.tabLevel,
-            time: DateTime.now());
+          '${log.typeName} $timeColor$time$msgColor${log.message}\x1B[0m$detailText\n--------------------------------',
+          level: log.tabLevel,
+          time: DateTime.now(),
+        );
       }
     }
   }
@@ -353,8 +527,14 @@ class LoggerLog {
     if (data != null) {
       _map.remove(key);
       final spend = DateTime.now().difference(data as DateTime).inMilliseconds;
-      LoggerLog.add(_Type.log, 'DateTime.now()', '$key: $spend ms', null, '\x1B[37m',
-          '\x1B[34m');
+      LoggerLog.add(
+        _Type.log,
+        'DateTime.now()',
+        '$key: $spend ms',
+        null,
+        '\x1B[37m',
+        '\x1B[34m',
+      );
     }
   }
 
@@ -426,9 +606,23 @@ class LoggerNet extends ChangeNotifier {
 
   bool contains(String keyword) {
     if (keyword.isEmpty) return true;
-    return api!.contains(keyword) ||
-        req != null && req!.contains(keyword) ||
-        res != null && res!.contains(keyword);
+    final normalizedKeyword = keyword.toLowerCase();
+    return api != null && api!.toLowerCase().contains(normalizedKeyword) ||
+        req != null && req!.toLowerCase().contains(normalizedKeyword) ||
+        res != null && res!.toLowerCase().contains(normalizedKeyword);
+  }
+
+  bool get isError {
+    return status >= 400 || (status >= 300 && status != 304);
+  }
+
+  bool get isPending {
+    return status < 200;
+  }
+
+  String get errorMessage {
+    if (!isError) return "";
+    return _safePreview(_extractResponseMessage(res), maxLength: 260);
   }
 
   @override
@@ -449,13 +643,19 @@ class LoggerNet extends ChangeNotifier {
   }
 
   static void request(
-      String api, String type, int status, Object? data, Object? headers, String msgColor) {
+    String api,
+    String type,
+    int status,
+    Object? data,
+    Object? headers,
+    String msgColor,
+  ) {
     final net = LoggerNet(
       api: api,
       type: type,
       status: status,
-      reqHeaders: headers?.toString(),
-      req: data?.toString(),
+      reqHeaders: _encodeData(headers),
+      req: _encodeData(data),
       start: DateTime.now(),
     );
     list.add(net);
@@ -470,11 +670,13 @@ class LoggerNet extends ChangeNotifier {
     if (Logger.config.printNet) {
       if (kIsWeb)
         debugPrint(
-            '${_printNames[4]} ${DateTime.now()} ${'$type: '}${net.api}${net.req == null ? '' : ' Headers: ${net.reqHeaders}\nData: ${net.req}'}\n--------------------------------');
+          '${_printNames[4]} ${DateTime.now()} ${'$type: '}${net.api}${net.req == null ? '' : ' Headers: ${net.reqHeaders}\nData: ${net.req}'}\n--------------------------------',
+        );
       else
         dev.log(
-            '${_printNames[4]} (${DateTime.now()}) ${'$type: '}\x1B[103m\x1B[30m${net.api}\x1B[0m${net.req == null ? '' : ' Headers: ${net.reqHeaders}\nData: $msgColor${net.req}\x1B[0m'}\n--------------------------------',
-            time: DateTime.now());
+          '${_printNames[4]} (${DateTime.now()}) ${'$type: '}\x1B[103m\x1B[30m${net.api}\x1B[0m${net.req == null ? '' : ' Headers: ${net.reqHeaders}\nData: $msgColor${net.req}\x1B[0m'}\n--------------------------------',
+          time: DateTime.now(),
+        );
     }
   }
 
@@ -484,33 +686,45 @@ class LoggerNet extends ChangeNotifier {
     }
   }
 
-  static void response(String api, int status, Object? data, Object? headers,
-      String? type, String msgColor) {
+  static void response(
+    String api,
+    int status,
+    Object? data,
+    Object? headers,
+    String? type,
+    String msgColor,
+  ) {
     LoggerNet? net = _map[api];
     if (net != null) {
-      _map.remove(net);
+      _map.remove(api);
       net.spend = DateTime.now().difference(net.start!).inMilliseconds;
       net.status = status;
-      net.resHeaders = headers?.toString();
-      net.res = data?.toString();
+      net.resHeaders = _encodeData(headers);
+      net.res = _encodeData(data);
       length.notifyListeners();
     } else {
       net = LoggerNet(api: api, start: DateTime.now(), type: type);
       net.status = status;
-      net.resHeaders = headers?.toString();
-      net.res = data?.toString();
+      net.resHeaders = _encodeData(headers);
+      net.res = _encodeData(data);
       list.add(net);
+      if (type != null && type != "" && !types.contains(type)) {
+        types.add(type);
+        typeLength.value++;
+      }
       _clearWhenTooMuch();
       length.value++;
     }
     if (Logger.config.printNet) {
       if (kIsWeb)
         debugPrint(
-            '${_printNames[5]} ${DateTime.now()} ${net.type == null ? '' : '${net.type}: '}{net.api}${net.res == null ? '' : ' Headers: ${net.resHeaders}\nData: ${net.res}'}\nSpend: ${net.spend} ms\n--------------------------------');
+          '${_printNames[5]} ${DateTime.now()} ${net.type == null ? '' : '${net.type}: '}{net.api}${net.res == null ? '' : ' Headers: ${net.resHeaders}\nData: ${net.res}'}\nSpend: ${net.spend} ms\n--------------------------------',
+        );
       else
         dev.log(
-            '${_printNames[5]} (${DateTime.now()}) ${net.type == null ? '' : '${net.type}: '}\x1B[106m\x1B[30m${net.api}\x1B[0m${net.res == null ? '' : ' Headers: ${net.resHeaders}\nData: $msgColor${net.res}\x1B[0m'}\nSpend: ${net.spend} ms\n--------------------------------',
-            time: DateTime.now());
+          '${_printNames[5]} (${DateTime.now()}) ${net.type == null ? '' : '${net.type}: '}\x1B[106m\x1B[30m${net.api}\x1B[0m${net.res == null ? '' : ' Headers: ${net.resHeaders}\nData: $msgColor${net.res}\x1B[0m'}\nSpend: ${net.spend} ms\n--------------------------------',
+          time: DateTime.now(),
+        );
     }
   }
 
