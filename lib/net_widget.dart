@@ -60,6 +60,8 @@ class _NetWidgetState extends State<NetWidget>
     }
   }
 
+  // Chronological order; the ListView renders with `reverse: true` so the
+  // newest request appears at the top while keeping the scroll position stable.
   List<LoggerNet> _filteredLogs() {
     return LoggerNet.list
         .where((n) {
@@ -110,6 +112,7 @@ class _NetWidgetState extends State<NetWidget>
                       thumbVisibility: true,
                       child: ListView.separated(
                         controller: scrollController,
+                        reverse: true,
                         padding: const EdgeInsets.fromLTRB(10, 8, 14, 88),
                         itemCount: logs.length,
                         separatorBuilder: (_, __) => const SizedBox(height: 9),
@@ -118,23 +121,13 @@ class _NetWidgetState extends State<NetWidget>
                     );
                   },
                 ),
-                if (newItemsCount > 0)
-                  buildNewItemsIndicator(
-                    '$newItemsCount nova(s) requisição(ões)',
-                  ),
+                buildLiveJumpButton(
+                  newItemsLabel: '$newItemsCount nova(s) requisição(ões)',
+                ),
               ],
             ),
           ),
         ],
-      ),
-      floatingActionButton: FloatingActionButton.small(
-        backgroundColor: t.accent,
-        foregroundColor: t.onAccent,
-        onPressed: () {
-          setState(() => newItemsCount = 0);
-          scrollToBottom();
-        },
-        child: const Icon(Icons.arrow_downward),
       ),
     );
   }
@@ -448,18 +441,27 @@ class _NetWidgetState extends State<NetWidget>
                     ),
                   );
                 },
-                itemBuilder: (context) => const [
+                itemBuilder: (context) => [
                   PopupMenuItem(
                     value: 'text',
-                    child: Text('Copiar como texto'),
+                    child: Text(
+                      'Copiar como texto',
+                      style: TextStyle(color: t.textPrimary),
+                    ),
                   ),
                   PopupMenuItem(
                     value: 'req',
-                    child: Text('Copiar requisição (JSON)'),
+                    child: Text(
+                      'Copiar requisição (JSON)',
+                      style: TextStyle(color: t.textPrimary),
+                    ),
                   ),
                   PopupMenuItem(
                     value: 'res',
-                    child: Text('Copiar resposta (JSON)'),
+                    child: Text(
+                      'Copiar resposta (JSON)',
+                      style: TextStyle(color: t.textPrimary),
+                    ),
                   ),
                 ],
               ),

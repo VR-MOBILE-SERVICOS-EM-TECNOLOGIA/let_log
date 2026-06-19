@@ -10,6 +10,10 @@ mixin _LiveListController<T extends StatefulWidget> on State<T> {
   String searchScope = 'Tudo';
   int newItemsCount = 0;
 
+  /// Whether the list is pinned to the live edge (the top, where the newest
+  /// items appear). When false there is older content below worth jumping to.
+  bool atLiveEdge = true;
+
   ValueNotifier<int>? _source;
   int Function()? _currentLength;
   int _lastSeenLength = 0;
@@ -31,28 +35,37 @@ mixin _LiveListController<T extends StatefulWidget> on State<T> {
   }
 
   void _handleScroll() {
-    if (_isTrackingLiveEdge && newItemsCount > 0) {
-      setState(() => newItemsCount = 0);
-    }
+    final tracking = _isTrackingLiveEdge;
+    if (tracking == atLiveEdge && !(tracking && newItemsCount > 0)) return;
+    setState(() {
+      atLiveEdge = tracking;
+      if (tracking) newItemsCount = 0;
+    });
   }
 
   void _handleChange() {
     final current = _currentLength?.call() ?? 0;
     final delta = current - _lastSeenLength;
     _lastSeenLength = current;
-    if (delta <= 0) {
+    // delta == 0 happens on in-place updates (e.g. a network response landing
+    // on an existing request); leave the unseen-items count untouched.
+    if (delta == 0) return;
+    if (delta < 0) {
       if (newItemsCount != 0) setState(() => newItemsCount = 0);
       return;
     }
     if (_isTrackingLiveEdge) {
       WidgetsBinding.instance.addPostFrameCallback(
-        (_) => scrollToBottom(jump: true),
+        (_) => scrollToLatest(jump: true),
       );
       return;
     }
     setState(() => newItemsCount += delta);
   }
 
+  /// The lists render with `reverse: true` (newest items at the top), so the
+  /// live edge sits at [maxScrollExtent]. Older history grows toward
+  /// [minScrollExtent], which keeps the viewport stable while scrolled back.
   bool get _isTrackingLiveEdge {
     if (!scrollController.hasClients) return true;
     final p = scrollController.position;
@@ -61,10 +74,10 @@ mixin _LiveListController<T extends StatefulWidget> on State<T> {
 
   void jumpToLatest() {
     setState(() => newItemsCount = 0);
-    scrollToBottom();
+    scrollToLatest();
   }
 
-  void scrollToBottom({bool jump = false}) {
+  void scrollToLatest({bool jump = false}) {
     if (!scrollController.hasClients) return;
     final target = scrollController.position.maxScrollExtent;
     if (jump) {
@@ -186,16 +199,25 @@ extension _LiveListUI<T extends StatefulWidget> on _LiveListController<T> {
     );
   }
 
-  Widget buildNewItemsIndicator(String label) {
+  /// Single floating control to jump back to the newest items (the top).
+  /// Shows whenever there is content above the viewport — labelled with the
+  /// new-items count when there are unseen items, or a neutral hint otherwise.
+  /// Sits above the system navigation bar via the bottom view padding.
+  Widget buildLiveJumpButton({
+    required String newItemsLabel,
+    String idleLabel = 'Ir para os recentes',
+  }) {
+    if (atLiveEdge && newItemsCount == 0) return const SizedBox.shrink();
+    final hasNew = newItemsCount > 0;
     return Positioned(
       left: 0,
       right: 0,
-      bottom: 16,
+      bottom: 16 + MediaQuery.paddingOf(context).bottom,
       child: Center(
         child: FilledButton.tonalIcon(
           onPressed: jumpToLatest,
-          icon: const Icon(Icons.arrow_downward, size: 16),
-          label: Text(label),
+          icon: const Icon(Icons.arrow_upward, size: 16),
+          label: Text(hasNew ? newItemsLabel : idleLabel),
         ),
       ),
     );

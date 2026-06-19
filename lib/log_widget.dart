@@ -43,6 +43,8 @@ class _LogWidgetState extends State<LogWidget>
     }
   }
 
+  // Chronological order; the ListView renders with `reverse: true` so the
+  // newest log appears at the top while keeping the scroll position stable.
   List<LoggerLog> _filteredLogs() => LoggerLog.list
       .where((l) => _selectTypes.contains(l.type) && _matchesSearch(l))
       .toList(growable: false);
@@ -82,6 +84,7 @@ class _LogWidgetState extends State<LogWidget>
                       thumbVisibility: true,
                       child: ListView.separated(
                         controller: scrollController,
+                        reverse: true,
                         padding: const EdgeInsets.fromLTRB(10, 8, 14, 88),
                         itemCount: logs.length,
                         separatorBuilder: (_, __) => const SizedBox(height: 9),
@@ -90,21 +93,13 @@ class _LogWidgetState extends State<LogWidget>
                     );
                   },
                 ),
-                if (newItemsCount > 0)
-                  buildNewItemsIndicator('$newItemsCount novo(s) log(s)'),
+                buildLiveJumpButton(
+                  newItemsLabel: '$newItemsCount novo(s) log(s)',
+                ),
               ],
             ),
           ),
         ],
-      ),
-      floatingActionButton: FloatingActionButton.small(
-        backgroundColor: t.accent,
-        foregroundColor: t.onAccent,
-        onPressed: () {
-          setState(() => newItemsCount = 0);
-          scrollToBottom();
-        },
-        child: const Icon(Icons.arrow_downward),
       ),
     );
   }
