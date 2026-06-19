@@ -83,9 +83,14 @@ class _NetWidgetState extends State<NetWidget>
       body: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          ValueListenableBuilder<int>(
-            valueListenable: LoggerNet.typeLength,
-            builder: (context, _, __) => searchActive
+          // Rebuild the toolbar on both the request count (totalizers, clear)
+          // and the type registry (method chips).
+          ListenableBuilder(
+            listenable: Listenable.merge([
+              LoggerNet.length,
+              LoggerNet.typeLength,
+            ]),
+            builder: (context, _) => searchActive
                 ? buildSearchToolbar(
                     scopes: const ['Tudo', 'URL', 'Headers', 'Body'],
                     shown: _filteredLogs().length,

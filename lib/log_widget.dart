@@ -57,14 +57,18 @@ class _LogWidgetState extends State<LogWidget>
       body: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          if (searchActive)
-            buildSearchToolbar(
-              scopes: const ['Tudo', 'Mensagem', 'Detalhe'],
-              shown: _filteredLogs().length,
-              total: LoggerLog.list.length,
-            )
-          else
-            _buildTools(t),
+          // Rebuild the toolbar (and its totalizers) whenever the log count
+          // changes, including on clear.
+          ValueListenableBuilder<int>(
+            valueListenable: LoggerLog.length,
+            builder: (context, _, __) => searchActive
+                ? buildSearchToolbar(
+                    scopes: const ['Tudo', 'Mensagem', 'Detalhe'],
+                    shown: _filteredLogs().length,
+                    total: LoggerLog.list.length,
+                  )
+                : _buildTools(t),
+          ),
           Expanded(
             child: Stack(
               children: [

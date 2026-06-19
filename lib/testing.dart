@@ -20,3 +20,7 @@ String debugBuildRequestJson(LoggerNet n) => _buildRequestJson(n);
 
 @visibleForTesting
 String? debugEncodeData(Object? data) => _encodeData(data);
+
+@visibleForTesting
+Object? debugParsePrefValue(Object? original, bool boolValue, String text) =>
+    _parsePrefValue(original, boolValue, text);

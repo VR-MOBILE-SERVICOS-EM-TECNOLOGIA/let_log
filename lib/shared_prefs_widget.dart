@@ -208,7 +208,7 @@ class _SharedPrefsWidgetState extends State<SharedPrefsWidget> {
     final preview = _previewOf(entry.value);
     return _CopyTarget(
       copyText: '${entry.key}: $preview',
-      onTap: () => _showEditDialog(entry, t),
+      onTap: () => _openEditor(entry, t),
       child: Padding(
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 11),
         child: Row(
@@ -254,156 +254,196 @@ class _SharedPrefsWidgetState extends State<SharedPrefsWidget> {
     );
   }
 
-  Future<void> _showEditDialog(
+  Future<void> _openEditor(
     MapEntry<String, Object?> entry,
     _LetLogTheme t,
   ) async {
     final prefs = widget.sheredPrefs;
     if (prefs == null) return;
 
-    final value = entry.value;
-    final controller = TextEditingController(
-      text: value is List ? value.join('\n') : (value?.toString() ?? ''),
-    );
-    bool boolValue = value is bool && value;
-    String? error;
-
-    final saved = await showDialog<bool>(
+    final changed = await showDialog<bool>(
       context: context,
-      builder: (dialogContext) {
-        return StatefulBuilder(
-          builder: (context, setLocal) {
-            Widget editor;
-            if (value is bool) {
-              editor = SwitchListTile(
-                contentPadding: EdgeInsets.zero,
-                title: Text(
-                  boolValue ? 'true' : 'false',
-                  style: TextStyle(color: t.textPrimary),
-                ),
-                value: boolValue,
-                activeThumbColor: t.accent,
-                onChanged: (v) => setLocal(() => boolValue = v),
-              );
-            } else {
-              final isNumber = value is int || value is double;
-              final isList = value is List;
-              editor = TextField(
-                controller: controller,
-                autofocus: true,
-                maxLines: isList ? 6 : 1,
-                keyboardType: isNumber
-                    ? const TextInputType.numberWithOptions(
-                        decimal: true,
-                        signed: true,
-                      )
-                    : TextInputType.multiline,
-                style: TextStyle(color: t.textPrimary, fontSize: 13),
-                decoration: InputDecoration(
-                  filled: true,
-                  fillColor: t.field,
-                  helperText: isList ? 'Um item por linha' : null,
-                  helperStyle: TextStyle(color: t.textMuted),
-                  errorText: error,
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(9),
-                    borderSide: BorderSide(color: t.border),
-                  ),
-                ),
-              );
-            }
-
-            return AlertDialog(
-              backgroundColor: t.card,
-              title: Text(
-                entry.key,
-                style: TextStyle(color: t.textPrimary, fontSize: 16),
-              ),
-              content: Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  _Pill(text: _typeOf(value), fg: t.info.fg, bg: t.info.bg),
-                  const SizedBox(height: 14),
-                  editor,
-                ],
-              ),
-              actions: [
-                TextButton(
-                  onPressed: () {
-                    prefs.remove(entry.key);
-                    Navigator.pop(dialogContext, true);
-                  },
-                  child: Text('Excluir', style: TextStyle(color: t.err.fg)),
-                ),
-                TextButton(
-                  onPressed: () => Navigator.pop(dialogContext, false),
-                  child: Text('Cancelar', style: TextStyle(color: t.textMuted)),
-                ),
-                FilledButton(
-                  style: FilledButton.styleFrom(backgroundColor: t.accent),
-                  onPressed: () {
-                    final ok = _persist(
-                      prefs,
-                      entry.key,
-                      value,
-                      boolValue,
-                      controller.text,
-                    );
-                    if (ok) {
-                      Navigator.pop(dialogContext, true);
-                    } else {
-                      setLocal(() => error = 'Valor inválido para o tipo.');
-                    }
-                  },
-                  child: Text('Salvar', style: TextStyle(color: t.onAccent)),
-                ),
-              ],
-            );
-          },
-        );
-      },
+      builder: (_) => _PrefEditDialog(
+        prefs: prefs,
+        entryKey: entry.key,
+        value: entry.value,
+        typeLabel: _typeOf(entry.value),
+        theme: t,
+      ),
     );
 
-    controller.dispose();
-    if (saved == true) _refreshEntries();
+    if (changed == true) _refreshEntries();
+  }
+}
+
+/// Parses the edited input into the typed value matching [original]. Returns
+/// null only when a numeric field cannot be parsed (an invalid edit). Pure and
+/// unit-testable in isolation from the widget tree.
+Object? _parsePrefValue(Object? original, bool boolValue, String text) {
+  if (original is bool) return boolValue;
+  if (original is int) return int.tryParse(text.trim());
+  if (original is double) return double.tryParse(text.trim());
+  if (original is List) {
+    return text
+        .split('\n')
+        .map((e) => e.trim())
+        .where((e) => e.isNotEmpty)
+        .toList();
+  }
+  return text;
+}
+
+/// Persists [value] using the SharedPreferences setter matching its type.
+void _writePrefValue(SharedPreferences prefs, String key, Object value) {
+  if (value is bool) {
+    prefs.setBool(key, value);
+  } else if (value is int) {
+    prefs.setInt(key, value);
+  } else if (value is double) {
+    prefs.setDouble(key, value);
+  } else if (value is List<String>) {
+    prefs.setStringList(key, value);
+  } else {
+    prefs.setString(key, value.toString());
+  }
+}
+
+/// Self-contained editor dialog that owns its [TextEditingController] lifecycle,
+/// so dismissing it (Cancel/Save/Delete) can never use a disposed controller.
+class _PrefEditDialog extends StatefulWidget {
+  final SharedPreferences prefs;
+  final String entryKey;
+  final Object? value;
+  final String typeLabel;
+  final _LetLogTheme theme;
+
+  const _PrefEditDialog({
+    required this.prefs,
+    required this.entryKey,
+    required this.value,
+    required this.typeLabel,
+    required this.theme,
+  });
+
+  @override
+  State<_PrefEditDialog> createState() => _PrefEditDialogState();
+
+  @override
+  void debugFillProperties(DiagnosticPropertiesBuilder properties) {
+    super.debugFillProperties(properties);
+    properties.add(DiagnosticsProperty<SharedPreferences>('prefs', prefs));
+    properties.add(StringProperty('entryKey', entryKey));
+    properties.add(DiagnosticsProperty<Object?>('value', value));
+    properties.add(StringProperty('typeLabel', typeLabel));
+    properties.add(DiagnosticsProperty<_LetLogTheme>('theme', theme));
+  }
+}
+
+class _PrefEditDialogState extends State<_PrefEditDialog> {
+  late final TextEditingController _controller;
+  late bool _boolValue;
+  String? _error;
+
+  @override
+  void initState() {
+    super.initState();
+    final v = widget.value;
+    _controller = TextEditingController(
+      text: v is List ? v.join('\n') : (v?.toString() ?? ''),
+    );
+    _boolValue = v is bool && v;
   }
 
-  /// Writes the edited value back using the setter matching its current type.
-  /// Returns false when the text cannot be parsed into that type.
-  bool _persist(
-    SharedPreferences prefs,
-    String key,
-    Object? original,
-    bool boolValue,
-    String text,
-  ) {
-    if (original is bool) {
-      prefs.setBool(key, boolValue);
-      return true;
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  void _save() {
+    final parsed = _parsePrefValue(widget.value, _boolValue, _controller.text);
+    if (parsed == null) {
+      setState(() => _error = 'Valor inválido para o tipo.');
+      return;
     }
-    if (original is int) {
-      final parsed = int.tryParse(text.trim());
-      if (parsed == null) return false;
-      prefs.setInt(key, parsed);
-      return true;
+    _writePrefValue(widget.prefs, widget.entryKey, parsed);
+    Navigator.pop(context, true);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final t = widget.theme;
+    final value = widget.value;
+    final Widget editor;
+    if (value is bool) {
+      editor = SwitchListTile(
+        contentPadding: EdgeInsets.zero,
+        title: Text(
+          _boolValue ? 'true' : 'false',
+          style: TextStyle(color: t.textPrimary),
+        ),
+        value: _boolValue,
+        activeThumbColor: t.accent,
+        onChanged: (v) => setState(() => _boolValue = v),
+      );
+    } else {
+      final isNumber = value is int || value is double;
+      final isList = value is List;
+      editor = TextField(
+        controller: _controller,
+        autofocus: true,
+        maxLines: isList ? 6 : 1,
+        keyboardType: isNumber
+            ? const TextInputType.numberWithOptions(decimal: true, signed: true)
+            : TextInputType.multiline,
+        style: TextStyle(color: t.textPrimary, fontSize: 13),
+        decoration: InputDecoration(
+          filled: true,
+          fillColor: t.field,
+          helperText: isList ? 'Um item por linha' : null,
+          helperStyle: TextStyle(color: t.textMuted),
+          errorText: _error,
+          border: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(9),
+            borderSide: BorderSide(color: t.border),
+          ),
+        ),
+      );
     }
-    if (original is double) {
-      final parsed = double.tryParse(text.trim());
-      if (parsed == null) return false;
-      prefs.setDouble(key, parsed);
-      return true;
-    }
-    if (original is List) {
-      final items = text
-          .split('\n')
-          .map((e) => e.trim())
-          .where((e) => e.isNotEmpty)
-          .toList();
-      prefs.setStringList(key, items);
-      return true;
-    }
-    prefs.setString(key, text);
-    return true;
+
+    return AlertDialog(
+      backgroundColor: t.card,
+      title: Text(
+        widget.entryKey,
+        style: TextStyle(color: t.textPrimary, fontSize: 16),
+      ),
+      content: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          _Pill(text: widget.typeLabel, fg: t.info.fg, bg: t.info.bg),
+          const SizedBox(height: 14),
+          editor,
+        ],
+      ),
+      actions: [
+        TextButton(
+          onPressed: () {
+            widget.prefs.remove(widget.entryKey);
+            Navigator.pop(context, true);
+          },
+          child: Text('Excluir', style: TextStyle(color: t.err.fg)),
+        ),
+        TextButton(
+          onPressed: () => Navigator.pop(context, false),
+          child: Text('Cancelar', style: TextStyle(color: t.textMuted)),
+        ),
+        FilledButton(
+          style: FilledButton.styleFrom(backgroundColor: t.accent),
+          onPressed: _save,
+          child: Text('Salvar', style: TextStyle(color: t.onAccent)),
+        ),
+      ],
+    );
   }
 }
